@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import jsonify, current_app, request
 import uuid
-from ..modelos import db, Usuario, UsuarioSchema, MetodoPago, MetodoPagoSchema, Categoria, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
+from ..modelos import db, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, MetodoPago, MetodoPagoSchema, Categoria, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
 from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import jwt_required, create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -25,6 +25,11 @@ cloudinary.config(
     cloudinary_url=os.getenv('CLOUDINARY_URL')
 )
 
+marca_schema = MarcaSchema()
+marcas_schema = MarcaSchema(many=True)
+
+descuento_schema = DescuentoSchema()
+descuentos_schema = DescuentoSchema(many=True)
 
 usuario_schema = UsuarioSchema()
 rol_schema = RolSchema()
@@ -1230,3 +1235,194 @@ class VistaPrivCategorias(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la categoría: {str(e)}"}, 500
+        
+
+# ----------------------- Gestion de admin para marcas
+class VistaMarcas(Resource):
+    # Obtener todas las marcas
+    @jwt_required()
+    def get(self):
+        try:
+            marcas = Marca.query.all()
+            marcas_serializadas = [
+                {
+                    "id_marca": marca.id_marca,
+                    "nombre": marca.nombre,
+                    "estado": marca.estado,
+                    "id_proveedor": marca.id_proveedor
+                }
+                for marca in marcas
+            ]
+            return jsonify({"marcas": marcas_serializadas})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener las marcas: {str(e)}"}, 500
+
+    # Agregar una nueva marca
+    @jwt_required()
+    def post(self):
+        try:
+            if not request.json.get("nombre") or not request.json.get("id_proveedor"):
+                return {"mensaje": "Faltan datos obligatorios."}, 400
+
+            nueva_marca = Marca(
+                nombre=request.json["nombre"],
+                estado=request.json.get("estado", "Activo"),
+                id_proveedor=request.json["id_proveedor"]
+            )
+
+            db.session.add(nueva_marca)
+            db.session.commit()
+
+            return {
+                "mensaje": "Marca agregada exitosamente.",
+                "marca": {
+                    "id_marca": nueva_marca.id_marca,
+                    "nombre": nueva_marca.nombre,
+                    "estado": nueva_marca.estado
+                }
+            }, 201
+        except IntegrityError:
+            db.session.rollback()
+            return {"mensaje": "Error: La marca ya existe o el proveedor no es válido."}, 400
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al agregar la marca: {str(e)}"}, 500
+
+
+class VistaMarca(Resource):
+    # Obtener marca por ID
+    @jwt_required()
+    def get(self, id_marca):
+        try:
+            marca = Marca.query.get(id_marca)
+            if not marca:
+                return {"mensaje": "Marca no encontrada."}, 404
+
+            marca_serializada = {
+                "id_marca": marca.id_marca,
+                "nombre": marca.nombre,
+                "estado": marca.estado,
+                "id_proveedor": marca.id_proveedor
+            }
+
+            return jsonify({"marca": marca_serializada})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener la marca: {str(e)}"}, 500
+
+    # Actualizar marca
+    @jwt_required()
+    def put(self, id_marca):
+        try:
+            marca = Marca.query.get(id_marca)
+            if not marca:
+                return {"mensaje": "Marca no encontrada."}, 404
+
+            marca.nombre = request.json.get("nombre", marca.nombre)
+            marca.id_proveedor = request.json.get("id_proveedor", marca.id_proveedor)
+
+            db.session.commit()
+
+            return {"mensaje": "Marca actualizada exitosamente."}, 200
+        except Exception as e:
+            return {"mensaje": f"Error al actualizar la marca: {str(e)}"}, 500
+
+    @jwt_required()
+    def patch(self, id_marca):
+        try:
+            marca = Marca.query.get(id_marca)
+            if not marca:
+                return {"mensaje": "Marca no encontrada."}, 404
+
+            nuevo_estado = request.json.get("estado")
+            if nuevo_estado not in ["Activo", "Inactivo"]:
+                return {"mensaje": "Estado inválido, debe ser 'Activo' o 'Inactivo'."}, 400
+
+            marca.estado = nuevo_estado
+            db.session.commit()
+
+            return {"mensaje": f"Marca {nuevo_estado.lower()} correctamente.", "estado": marca.estado}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al actualizar el estado de la marca: {str(e)}"}, 500
+
+# ----------------------- Gestion de admin para descuentos
+class VistaDescuentos(Resource):
+    def get(self):
+        try:
+            descuentos = Descuento.query.all()
+            return jsonify({"descuentos": descuentos_schema.dump(descuentos)})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500
+
+    @jwt_required()
+    def post(self):
+        try:
+            data = request.json
+            if not data.get("id_producto") or not data.get("porcentaje"):
+                return {"mensaje": "Faltan datos obligatorios."}, 400
+
+            nuevo_descuento = Descuento(
+                id_producto=data["id_producto"],
+                porcentaje=data["porcentaje"],
+                fecha_inicio=data.get("fecha_inicio"),
+                fecha_fin=data.get("fecha_fin"),
+            )
+
+            db.session.add(nuevo_descuento)
+            db.session.commit()
+
+            return {
+                "mensaje": "Descuento agregado exitosamente.",
+                "descuento": descuento_schema.dump(nuevo_descuento)
+            }, 201
+
+        except IntegrityError:
+            db.session.rollback()
+            return {"mensaje": "Error de integridad: El producto no existe."}, 400
+        except Exception as e:
+            return {"mensaje": f"Error al agregar el descuento: {str(e)}"}, 500
+
+class VistaDescuento(Resource):
+    def get(self, id_descuento):
+        try:
+            descuento = Descuento.query.get(id_descuento)
+            if not descuento:
+                return {"mensaje": "Descuento no encontrado."}, 404
+            return jsonify({"descuento": descuento_schema.dump(descuento)})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener el descuento: {str(e)}"}, 500
+
+    @jwt_required()
+    def put(self, id_descuento):
+        try:
+            descuento = Descuento.query.get(id_descuento)
+            if not descuento:
+                return {"mensaje": "Descuento no encontrado."}, 404
+
+            data = request.json
+            descuento.porcentaje = data.get("porcentaje", descuento.porcentaje)
+            descuento.fecha_inicio = data.get("fecha_inicio", descuento.fecha_inicio)
+            descuento.fecha_fin = data.get("fecha_fin", descuento.fecha_fin)
+
+            db.session.commit()
+
+            return {
+                "mensaje": "Descuento actualizado exitosamente.",
+                "descuento": descuento_schema.dump(descuento)
+            }, 200
+        except Exception as e:
+            return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500
+
+    @jwt_required()
+    def delete(self, id_descuento):
+        try:
+            descuento = Descuento.query.get(id_descuento)
+            if not descuento:
+                return {"mensaje": "Descuento no encontrado."}, 404
+
+            db.session.delete(descuento)
+            db.session.commit()
+
+            return {"mensaje": "Descuento eliminado exitosamente."}, 200
+        except Exception as e:
+            return {"mensaje": f"Error al eliminar el descuento: {str(e)}"}, 500

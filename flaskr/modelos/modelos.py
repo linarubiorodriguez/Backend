@@ -78,6 +78,7 @@ class Marca(db.Model):
     __tablename__ = 'marca'
     id_marca = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False)
+    estado = db.Column(db.String(50), default="Activo", nullable=False)
     id_proveedor = db.Column(db.Integer, db.ForeignKey('proveedor.id_proveedor'), nullable=False)
 
     proveedor = db.relationship('Proveedor', backref='marcas')
