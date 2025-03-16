@@ -10,7 +10,8 @@ from flaskr.vistas import (
     VistaAdminProveedores, VistaCarrito,
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
     VistaPrivTipoDoc, VistaPrivRol, VistaPrivMetodoPago,  VistaPrivCategorias, VistaPrivMetodoPagos, VistaPrivRoles,
-    VistaPrivTipoDocs
+    VistaPrivTipoDocs,
+    VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal
 )
 
 
@@ -63,6 +64,18 @@ api.add_resource(VistaAdminProveedor, '/adminProveedor/<int:id_proveedor>')
 api.add_resource(VistaCarrito, '/Carrito/<int:id_usuario>')
 api.add_resource(VistaProductoCarrito, '/Compra/<int:id_usuario>')
 api.add_resource(VistaProcesarCompra, '/ProductoCarrito/<int:id_carrito>/<int:id_producto>')
+
+# Gestión de marcas
+api.add_resource(VistaMarcas, '/PrivMarcas')
+api.add_resource(VistaMarca, '/PrivMarca/<int:id_marca>')
+
+# Gestión de descuentos
+api.add_resource(VistaDescuentos, '/descuentosProd')
+api.add_resource(VistaDescuento, '/descuentosProd/<int:id_descuento>')
+
+# Gestión de animales
+api.add_resource(VistaAnimales, '/animalesProd')
+api.add_resource(VistaAnimal, '/animalesProd/<int:id_animal>')
 
 # Inicializar JWT
 jwt = JWTManager(app)

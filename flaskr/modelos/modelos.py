@@ -100,6 +100,17 @@ class Producto(db.Model):
     id_marca = db.Column(db.Integer, db.ForeignKey('marca.id_marca'), nullable=False)
     marca = db.relationship('Marca', backref='productos')
 
+    id_animal = db.Column(db.Integer, db.ForeignKey('animal.id_animal'), nullable=False)
+    animal = db.relationship('Animal', backref='productos')
+
+class Animal(db.Model):
+    __tablename__ = 'animal'
+    id_animal = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False, unique=True)
+    
+    productos = db.relationship('Producto', backref='animal', lazy=True)
+
+
 class Factura(db.Model):
     __tablename__ = 'factura'
     id_factura = db.Column(db.Integer, primary_key=True)
@@ -214,6 +225,7 @@ class ProductoSchema(SQLAlchemyAutoSchema):
         model = Producto
         include_relationship = True
         load_instance = True
+        include_fk = True 
 
 class FacturaSchema(SQLAlchemyAutoSchema):
     class Meta:

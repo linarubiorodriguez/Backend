@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import jsonify, current_app, request
 import uuid
-from ..modelos import db, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, MetodoPago, MetodoPagoSchema, Categoria, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
+from ..modelos import db, Animal, AnimalSchema, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, MetodoPago, MetodoPagoSchema, Categoria, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
 from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import jwt_required, create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -27,7 +27,8 @@ cloudinary.config(
 
 marca_schema = MarcaSchema()
 marcas_schema = MarcaSchema(many=True)
-
+animal_schema = AnimalSchema()
+animales_schema = AnimalSchema(many=True)
 descuento_schema = DescuentoSchema()
 descuentos_schema = DescuentoSchema(many=True)
 
@@ -1240,7 +1241,6 @@ class VistaPrivCategorias(Resource):
 # ----------------------- Gestion de admin para marcas
 class VistaMarcas(Resource):
     # Obtener todas las marcas
-    @jwt_required()
     def get(self):
         try:
             marcas = Marca.query.all()
@@ -1291,7 +1291,6 @@ class VistaMarcas(Resource):
 
 class VistaMarca(Resource):
     # Obtener marca por ID
-    @jwt_required()
     def get(self, id_marca):
         try:
             marca = Marca.query.get(id_marca)
@@ -1426,3 +1425,69 @@ class VistaDescuento(Resource):
             return {"mensaje": "Descuento eliminado exitosamente."}, 200
         except Exception as e:
             return {"mensaje": f"Error al eliminar el descuento: {str(e)}"}, 500
+        
+class VistaAnimales(Resource):
+    def get(self):
+        try:
+            animales = Animal.query.all()
+            return jsonify({"animales": animales_schema.dump(animales)})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener los animales: {str(e)}"}, 500
+
+    @jwt_required()
+    def post(self):
+        try:
+            nombre = request.json.get("nombre")
+
+            if not nombre:
+                return {"mensaje": "El nombre del animal es obligatorio."}, 400
+
+            nuevo_animal = Animal(nombre=nombre)
+            db.session.add(nuevo_animal)
+            db.session.commit()
+
+            return {"mensaje": "Animal agregado exitosamente.", "animal": animal_schema.dump(nuevo_animal)}, 201
+        except Exception as e:
+            return {"mensaje": f"Error al agregar el animal: {str(e)}"}, 500
+
+
+class VistaAnimal(Resource):
+    def get(self, id_animal):
+        try:
+            animal = Animal.query.get(id_animal)
+            if not animal:
+                return {"mensaje": "Animal no encontrado."}, 404
+
+            return jsonify({"animal": animal_schema.dump(animal)})
+        except Exception as e:
+            return {"mensaje": f"Error al obtener el animal: {str(e)}"}, 500
+
+    @jwt_required()
+    def put(self, id_animal):
+        try:
+            animal = Animal.query.get(id_animal)
+            if not animal:
+                return {"mensaje": "Animal no encontrado."}, 404
+
+            nombre = request.json.get("nombre", animal.nombre)
+            animal.nombre = nombre
+
+            db.session.commit()
+
+            return {"mensaje": "Animal actualizado exitosamente.", "animal": animal_schema.dump(animal)}, 200
+        except Exception as e:
+            return {"mensaje": f"Error al actualizar el animal: {str(e)}"}, 500
+
+    @jwt_required()
+    def delete(self, id_animal):
+        try:
+            animal = Animal.query.get(id_animal)
+            if not animal:
+                return {"mensaje": "Animal no encontrado."}, 404
+
+            db.session.delete(animal)
+            db.session.commit()
+
+            return {"mensaje": "Animal eliminado correctamente."}, 200
+        except Exception as e:
+            return {"mensaje": f"Error al eliminar el animal: {str(e)}"}, 500

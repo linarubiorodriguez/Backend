@@ -31,7 +31,7 @@ def create_app(config_name):
 
 def insertar_datos_iniciales():
 
-    from .modelos import TipoDoc, Rol, Categoria, MetodoPago, db
+    from .modelos import TipoDoc, Rol, Categoria, MetodoPago, Animal, db
 
     tipos_documento = [
         {"id": 1, "nombre": "TI", "descripcion": "Tarjeta de identidad"},
@@ -72,8 +72,6 @@ def insertar_datos_iniciales():
                 )
                 db.session.add(nueva_categoria)
 
-    db.session.commit()
-
     metodos_pago = [
         {"id": 1, "nombre": "Paypal"},
         {"id": 2, "nombre": "VISA"},
@@ -85,6 +83,16 @@ def insertar_datos_iniciales():
         if not MetodoPago.query.get(metodo["id"]):
             nuevo_metodo = MetodoPago(id_pago=metodo["id"], nombre=metodo["nombre"])
             db.session.add(nuevo_metodo)
+
+    animales = [
+        {"id": 1, "nombre": "Gatos"},
+        {"id": 2, "nombre": "Perros"}
+    ]
+
+    for animal in animales:
+        if not Animal.query.get(animal["id"]):
+            nuevo_animal = Animal(id_animal=animal["id"], nombre=animal["nombre"])
+            db.session.add(nuevo_animal)
 
 
     db.session.commit()
