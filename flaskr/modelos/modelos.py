@@ -28,7 +28,7 @@ class Categoria(db.Model):
     id_categoria = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False)
     descripcion = db.Column(db.String(255))
-    imagen = db.Column(db.String(255))  # Nuevo campo para la URL de la imagen
+    imagen = db.Column(db.String(255))  
 
 
 class Usuario(db.Model):
@@ -67,7 +67,6 @@ class Usuario(db.Model):
     def esta_activo(self):
         return self.estado == "Activo"
 
-# Clase Proveedor
 class Proveedor(db.Model):
     id_proveedor = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50))
@@ -75,7 +74,15 @@ class Proveedor(db.Model):
     correo = db.Column(db.String(50))
     estado = db.Column(db.String(50))
 
-# Clase Producto
+class Marca(db.Model):
+    __tablename__ = 'marca'
+    id_marca = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False)
+    id_proveedor = db.Column(db.Integer, db.ForeignKey('proveedor.id_proveedor'), nullable=False)
+
+    proveedor = db.relationship('Proveedor', backref='marcas')
+
+
 class Producto(db.Model):
     __tablename__ = 'producto'
     id_producto = db.Column(db.Integer, primary_key=True)
@@ -88,6 +95,9 @@ class Producto(db.Model):
 
     id_categoria = db.Column(db.Integer, db.ForeignKey('categoria.id_categoria'), nullable=False)
     categoria = db.relationship('Categoria', backref='productos')
+
+    id_marca = db.Column(db.Integer, db.ForeignKey('marca.id_marca'), nullable=False)
+    marca = db.relationship('Marca', backref='productos')
 
 class Factura(db.Model):
     __tablename__ = 'factura'
@@ -128,6 +138,30 @@ class DetalleCarrito(db.Model):
     id_carrito = db.Column(db.Integer, db.ForeignKey('carrito.id_carrito'), nullable=False)
     id_producto = db.Column(db.Integer, db.ForeignKey('producto.id_producto'), nullable=False)
     cantidad = db.Column(db.Integer, nullable=False)
+
+class Descuento(db.Model):
+    __tablename__ = 'descuento'
+    id_descuento = db.Column(db.Integer, primary_key=True)
+    id_producto = db.Column(db.Integer, db.ForeignKey('producto.id_producto'), nullable=False)
+    porcentaje_descuento = db.Column(db.Float, nullable=False)
+    fecha_inicio = db.Column(db.DateTime, nullable=False)
+    fecha_fin = db.Column(db.DateTime, nullable=False)
+
+    producto = db.relationship('Producto', backref='descuentos')
+
+
+class MarcaSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Marca
+        include_relationships = True
+        load_instance = True
+
+
+class DescuentoSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Descuento
+        include_relationships = True
+        load_instance = True
 
 
 class EnumField(fields.Field):
