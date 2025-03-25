@@ -108,8 +108,6 @@ class Animal(db.Model):
     id_animal = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False, unique=True)
     
-    productos = db.relationship('Producto', backref='animal', lazy=True)
-
 
 class Factura(db.Model):
     __tablename__ = 'factura'
@@ -174,6 +172,13 @@ class DescuentoSchema(SQLAlchemyAutoSchema):
         model = Descuento
         include_relationships = True
         load_instance = True
+
+class AnimalSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Descuento
+        include_relationships = True
+        load_instance = True
+
 
 
 class EnumField(fields.Field):
