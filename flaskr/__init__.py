@@ -31,7 +31,7 @@ def create_app(config_name):
 
 def insertar_datos_iniciales():
 
-    from .modelos import TipoDoc, Rol, Categoria, MetodoPago, Animal, db
+    from .modelos import TipoDoc, Rol, Categoria, Animal, db
 
     tipos_documento = [
         {"id": 1, "nombre": "TI", "descripcion": "Tarjeta de identidad"},
@@ -72,17 +72,7 @@ def insertar_datos_iniciales():
                 )
                 db.session.add(nueva_categoria)
 
-    metodos_pago = [
-        {"id": 1, "nombre": "Paypal"},
-        {"id": 2, "nombre": "VISA"},
-        {"id": 3, "nombre": "Mastercard"},
-        {"id": 4, "nombre": "Nequi"}
-    ]
 
-    for metodo in metodos_pago:
-        if not MetodoPago.query.get(metodo["id"]):
-            nuevo_metodo = MetodoPago(id_pago=metodo["id"], nombre=metodo["nombre"])
-            db.session.add(nuevo_metodo)
 
     animales = [
         {"id": 1, "nombre": "Gatos"},

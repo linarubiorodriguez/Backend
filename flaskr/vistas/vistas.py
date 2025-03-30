@@ -1,7 +1,8 @@
 from flask_restful import Resource
 from flask import jsonify, current_app, request
 import uuid
-from ..modelos import db, Animal, AnimalSchema, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, MetodoPago, MetodoPagoSchema, Categoria, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
+from datetime import datetime
+from ..modelos import db, Animal, AnimalSchema, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, Categoria, FormularioPago, FormularioPagoSchema, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
 from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import jwt_required, create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -33,8 +34,8 @@ descuento_schema = DescuentoSchema()
 descuentos_schema = DescuentoSchema(many=True)
 
 usuario_schema = UsuarioSchema()
+formupago_schema = FormularioPagoSchema()
 rol_schema = RolSchema()
-metodo_pago = MetodoPagoSchema()
 categoria_schema = CategoriaSchema()
 tipodoc_schema = TipoDocSchema()
 provedoor_schema = ProveedorSchema()
@@ -507,7 +508,6 @@ class VistaPrivFacturas(Resource):    # Obtener todas las facturas
                     "total": factura.total,
                     "iva_total": factura.iva_total,
                     "estado": factura.estado,
-                    "metodo_pago": factura.metodo_pago,
                     "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),  # Formatear la fecha
                     "id_cliente": factura.id_cliente,
                     "cliente": {
@@ -525,43 +525,36 @@ class VistaPrivFacturas(Resource):    # Obtener todas las facturas
         except Exception as e:
             return {"mensaje": f"Error al obtener las facturas: {str(e)}"}, 500
 
-    @jwt_required()  # Requiere un JWT válido para acceder
     # Agregar una nueva factura
+    @jwt_required()
     def post(self):
         try:
-            # Validar que los campos necesarios estén presentes
-            if not request.json.get("total") or not request.json.get("estado") or not request.json.get("metodo_pago"):
+            data = request.json
+
+            # Validar que los datos requeridos estén presentes
+            if not data.get("total") or not data.get("id_cliente"):
                 return {"mensaje": "Faltan datos obligatorios."}, 400
 
-            # Crear una nueva factura
+            # Crear una nueva factura en estado "Pendiente"
             nueva_factura = Factura(
-                fecha_factura=request.json.get("fecha_factura"),
-                total=request.json["total"],
-                iva_total=request.json["iva_total"],
-                estado=request.json["estado"],
-                metodo_pago=request.json["metodo_pago"],
-                fecha_vencimiento=request.json.get("fecha_vencimiento"),
-                id_cliente=request.json["id_cliente"]
+                fecha_factura=datetime.utcnow(),
+                total=data["total"],
+                iva_total=data.get("iva_total", 0),
+                estado="Pendiente",
+                fecha_vencimiento=data.get("fecha_vencimiento"),
+                id_cliente=data["id_cliente"]
             )
 
             db.session.add(nueva_factura)
             db.session.commit()
 
             return {
-                "mensaje": "Factura agregada exitosamente.",
-                "factura": {
-                    "id_factura": nueva_factura.id_factura,
-                    "fecha_factura": nueva_factura.fecha_factura.strftime('%Y-%m-%d %H:%M:%S'),
-                    "total": nueva_factura.total,
-                    "iva_total": nueva_factura.iva_total,
-                    "estado": nueva_factura.estado,
-                    "metodo_pago": nueva_factura.metodo_pago,
-                    "fecha_vencimiento": nueva_factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),
-                    "id_cliente": nueva_factura.id_cliente
-                }
+                "mensaje": "Factura creada exitosamente.",
+                "id_factura": nueva_factura.id_factura
             }, 201
+
         except Exception as e:
-            return {"mensaje": f"Error al agregar la factura: {str(e)}"}, 500
+            return {"mensaje": f"Error al crear la factura: {str(e)}"}, 500
 
 class VistaPrivFactura(Resource):
     # Obtener factura por ID
@@ -581,7 +574,6 @@ class VistaPrivFactura(Resource):
                 "total": factura.total,
                 "iva_total": factura.iva_total,
                 "estado": factura.estado,
-                "metodo_pago": factura.metodo_pago,
                 "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),
                 "id_cliente": factura.id_cliente,
                 "cliente": {
@@ -612,7 +604,6 @@ class VistaPrivFactura(Resource):
             factura.total = request.json.get("total", factura.total)
             factura.iva_total = request.json.get("iva_total", factura.iva_total)
             factura.estado = request.json.get("estado", factura.estado)
-            factura.metodo_pago = request.json.get("metodo_pago", factura.metodo_pago)
             factura.fecha_vencimiento = request.json.get("fecha_vencimiento", factura.fecha_vencimiento)
             factura.id_cliente = request.json.get("id_cliente", factura.id_cliente)
 
@@ -626,7 +617,6 @@ class VistaPrivFactura(Resource):
                     "total": factura.total,
                     "iva_total": factura.iva_total,
                     "estado": factura.estado,
-                    "metodo_pago": factura.metodo_pago,
                     "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),
                     "id_cliente": factura.id_cliente
                 }
@@ -651,6 +641,76 @@ class VistaPrivFactura(Resource):
             return {"mensaje": "Estado de la factura actualizado exitosamente."}, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el estado de la factura: {str(e)}"}, 500
+
+# ----------------------- Gestión formulario de pago
+class VistaFormularioPago(Resource):
+    @jwt_required()  # Requiere autenticación
+    def post(self):
+        try:
+            data = request.json
+
+            factura = Factura.query.filter_by(id_factura=data.get("id_factura")).first()
+            if not factura:
+                return {"mensaje": "Factura no encontrada."}, 404
+
+            if not data.get("tipo_pago"):
+                return {"mensaje": "El tipo de pago es obligatorio."}, 400
+
+            referencia_pago = str(uuid.uuid4())[:10] 
+
+            nuevo_pago = FormularioPago(
+                id_factura=factura.id_factura,
+                titular=data.get("titular"),
+                numero_tarjeta=data.get("numero_tarjeta"),
+                fecha_expiracion=data.get("fecha_expiracion"),
+                codigo_seguridad=data.get("codigo_seguridad"),
+                estado_pago="Pagado",  
+                referencia_pago=referencia_pago,
+                fecha_pago=datetime.utcnow()
+            )
+
+            db.session.add(nuevo_pago)
+
+            factura.estado = "Pagada"
+
+            db.session.commit()
+
+            return {
+                "mensaje": "Pago registrado exitosamente.",
+                "pago": {
+                    "id_formulario": nuevo_pago.id_formulario,
+                    "id_factura": nuevo_pago.id_factura,
+                    "titular": nuevo_pago.titular,
+                    "estado_pago": nuevo_pago.estado_pago,
+                    "referencia_pago": nuevo_pago.referencia_pago,
+                    "fecha_pago": nuevo_pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S')
+                }
+            }, 201
+
+        except Exception as e:
+            return {"mensaje": f"Error al procesar el pago: {str(e)}"}, 500
+
+    @jwt_required()
+    def get(self, id_factura):
+        try:
+            pago = FormularioPago.query.filter_by(id_factura=id_factura).first()
+
+            if not pago:
+                return {"mensaje": "No hay pagos registrados para esta factura."}, 404
+
+            return {
+                "pago": {
+                    "id_formulario": pago.id_formulario,
+                    "id_factura": pago.id_factura,
+                    "titular": pago.titular,
+                    "estado_pago": pago.estado_pago,
+                    "referencia_pago": pago.referencia_pago,
+                    "fecha_pago": pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S')
+                }
+            }, 200
+
+        except Exception as e:
+            return {"mensaje": f"Error al obtener la información del pago: {str(e)}"}, 500
 
 # ----------------------- Gestión de Proveedores
 
@@ -1076,73 +1136,6 @@ class VistaPrivRoles(Resource):
             return {"mensaje": f"Error al actualizar el rol: {str(e)}"}, 500
 
 
-class VistaPrivMetodoPago(Resource):
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Obtener todos los métodos de pago
-    def get(self):
-        try:
-            metodos_pago = MetodoPago.query.all()
-            metodos_pago_serializados = [
-                {
-                    "id_pago": metodo.id_pago,
-                    "nombre": metodo.nombre
-                }
-                for metodo in metodos_pago
-            ]
-            return jsonify({"metodos_pago": metodos_pago_serializados})
-        except Exception as e:
-            return {"mensaje": f"Error al obtener los métodos de pago: {str(e)}"}, 500
-
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Agregar un nuevo método de pago
-    def post(self):
-        try:
-            datos = request.form
-            if not datos.get("nombre"):
-                return {"mensaje": "Faltan datos obligatorios."}, 400
-
-            imagen_url = datos.get("imagen")  # Obtener imagen de la solicitud
-            if not imagen_url and 'imagen' in request.files:
-                imagen = request.files['imagen']
-                upload_result = cloudinary.uploader.upload(imagen)
-                imagen_url = upload_result.get('secure_url')
-
-            nueva_categoria = Categoria(
-                nombre=datos["nombre"],
-                descripcion=datos.get("descripcion"),
-                imagen=imagen_url or "https://via.placeholder.com/100"
-            )
-
-            db.session.add(nueva_categoria)
-            db.session.commit()
-
-            return {"mensaje": "Categoría agregada exitosamente."}, 201
-        except Exception as e:
-            return {"mensaje": f"Error al agregar la categoría: {str(e)}"}, 500
-
-
-class VistaPrivMetodoPagos(Resource):
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Modificar método de pago
-    def put(self, id_pago):
-        try:
-            metodo_pago = MetodoPago.query.filter_by(id_pago=id_pago).first()
-            if not metodo_pago:
-                return {"mensaje": "Método de pago no encontrado."}, 404
-
-            metodo_pago.nombre = request.json.get("nombre", metodo_pago.nombre)
-
-            db.session.commit()
-
-            return {
-                "mensaje": "Método de pago actualizado exitosamente.",
-                "metodo_pago": {
-                    "id_pago": metodo_pago.id_pago,
-                    "nombre": metodo_pago.nombre
-                }
-            }, 200
-        except Exception as e:
-            return {"mensaje": f"Error al actualizar el método de pago: {str(e)}"}, 500
 
 
 class VistaPrivCategoria(Resource):

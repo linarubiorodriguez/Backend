@@ -1,6 +1,7 @@
 from marshmallow import fields
 from flask_sqlalchemy import SQLAlchemy
 import enum
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
@@ -18,10 +19,6 @@ class Rol(db.Model):
     Nombre = db.Column(db.String(50), nullable=False)
     Descripcion = db.Column(db.String(255))
 
-class MetodoPago(db.Model):
-    __tablename__ = 'metodo_pago'
-    id_pago = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(50), nullable=False)
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'
@@ -108,21 +105,18 @@ class Animal(db.Model):
     id_animal = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False, unique=True)
     
-
 class Factura(db.Model):
     __tablename__ = 'factura'
     id_factura = db.Column(db.Integer, primary_key=True)
-    fecha_factura = db.Column(db.DateTime, nullable=False)
-    total = db.Column(db.Float, nullable=False)
-    iva_total = db.Column(db.Float, nullable=False)
-    estado = db.Column(db.String(50), default="Pendiente")
-    fecha_vencimiento = db.Column(db.DateTime, nullable=False)
+    fecha_factura = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  
+    total = db.Column(db.Float, nullable=True)  
+    iva_total = db.Column(db.Float, nullable=True)  
+    estado = db.Column(db.String(50), default="Pendiente", nullable=False)  
+    fecha_vencimiento = db.Column(db.DateTime, nullable=True) 
 
     id_cliente = db.Column(db.Integer, db.ForeignKey('usuario.id_usuario'), nullable=False)
     cliente = db.relationship('Usuario', backref='facturas')
 
-    id_metodo_pago = db.Column(db.Integer, db.ForeignKey('metodo_pago.id_pago'), nullable=False)
-    metodo_pago = db.relationship('MetodoPago', backref='facturas')
 
 # Modelo DetalleFactura
 class DetalleFactura(db.Model):
@@ -159,10 +153,31 @@ class Descuento(db.Model):
 
     producto = db.relationship('Producto', backref='descuentos')
 
+class FormularioPago(db.Model):
+    __tablename__ = 'formulario_pago'
+    id_formulario = db.Column(db.Integer, primary_key=True)
+    id_factura = db.Column(db.Integer, db.ForeignKey('factura.id_factura'), nullable=False)
+    tipo_pago = db.Column(db.String(50), nullable=False)  
+    titular = db.Column(db.String(100), nullable=True)  
+    numero_tarjeta = db.Column(db.String(16), nullable=True)  
+    fecha_expiracion = db.Column(db.String(7), nullable=True)  
+    codigo_seguridad = db.Column(db.String(4), nullable=True)  
+    estado_pago = db.Column(db.String(50), default="Pendiente", nullable=False)  
+    referencia_pago = db.Column(db.String(50), unique=True, nullable=True)  
+    fecha_pago = db.Column(db.DateTime, nullable=True)  
+
+    factura = db.relationship('Factura', backref='formulario_pago')
+
 
 class MarcaSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Marca
+        include_relationships = True
+        load_instance = True
+
+class FormularioPagoSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = FormularioPago
         include_relationships = True
         load_instance = True
 
@@ -206,11 +221,6 @@ class RolSchema(SQLAlchemyAutoSchema):
         include_relationships = True
         load_instance = True
 
-class MetodoPagoSchema(SQLAlchemyAutoSchema):
-    class Meta:
-        model = MetodoPago
-        include_relationships = True
-        load_instance = True
 
 class CategoriaSchema(SQLAlchemyAutoSchema):
     class Meta:
