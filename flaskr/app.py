@@ -9,7 +9,7 @@ from flaskr.vistas import (
     VistaAdminProveedor,
     VistaAdminProveedores, VistaCarrito,
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
-    VistaPrivTipoDoc, VistaPrivRol, VistaPrivMetodoPago,  VistaPrivCategorias, VistaPrivMetodoPagos, VistaPrivRoles,
+    VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPago, VistaFormularioPagos,
     VistaPrivTipoDocs,
     VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal
 )
@@ -32,9 +32,11 @@ api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_TipoDocumento>')
 api.add_resource(VistaPrivRol, '/rol') 
 api.add_resource(VistaPrivRoles, '/rol/<int:id_Rol>')  
 
-# Rutas para MetodoPago
-api.add_resource(VistaPrivMetodoPago, '/metodo_pago')  
-api.add_resource(VistaPrivMetodoPagos, '/metodo_pago/<int:id_pago>')
+
+# Rutas para el formulario de pago
+api.add_resource(VistaPrivRol, '/FormPago') 
+api.add_resource(VistaPrivRoles, '/FormPago/<int:id_formulario>')  
+
 
 # Rutas para Categoria
 api.add_resource(VistaPrivCategoria, '/categoria')

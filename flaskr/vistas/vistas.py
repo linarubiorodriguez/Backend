@@ -689,7 +689,9 @@ class VistaFormularioPago(Resource):
 
         except Exception as e:
             return {"mensaje": f"Error al procesar el pago: {str(e)}"}, 500
-
+        
+class VistaFormularioPagos(Resource):
+    # Detalle del pago
     @jwt_required()
     def get(self, id_factura):
         try:
