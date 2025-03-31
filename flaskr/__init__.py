@@ -53,12 +53,11 @@ def insertar_datos_iniciales():
         if not Rol.query.get(rol["id"]):
             db.session.add(Rol(id_Rol=rol["id"], Nombre=rol["nombre"], Descripcion=rol["descripcion"]))
 
-    # Categorías
     categorias = [
-        {"id": 1, "nombre": "Camas", "descripcion": "Comodidad para tus mascotas."},
-        {"id": 2, "nombre": "Juguetes", "descripcion": "Entretenimiento para tus mascotas."},
-        {"id": 3, "nombre": "Accesorios", "descripcion": "Estética para tus mascotas."},
-        {"id": 4, "nombre": "Comida", "descripcion": "Alimento para tus mascotas."}
+        {"id": 1, "nombre": "Camas", "descripcion": "Comodidad para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740162149/camas_w31iw0.png"},
+        {"id": 2, "nombre": "Juguetes", "descripcion": "Entretenimiento para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740156258/xfamhkvn2kzklrxbcbgf.png"},
+        {"id": 3, "nombre": "Accesorios", "descripcion": "Estética para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740156259/fiuz63szmeexuvlm6s6u.png"},
+        {"id": 4, "nombre": "Comida", "descripcion": "Alimento para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740156258/ixxmvuvctk6jtx5qj1gv.png"}
     ]
     for cat in categorias:
         if not Categoria.query.get(cat["id"]):
@@ -66,40 +65,36 @@ def insertar_datos_iniciales():
 
     # Animales
     animales = [
-        {"id": 1, "nombre": "Gato"},
-        {"id": 2, "nombre": "Perro"},
-        {"id": 3, "nombre": "Conejo"}
+        {"id": 1, "nombre": "Gatos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383469/r3rtvevdgp7bf4tsthzz.jpg"},
+        {"id": 2, "nombre": "Perros", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383524/ohpwe0ctjdwa6o3nvukw.jpg"},
+        {"id": 3, "nombre": "Conejos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383533/ufssmdmu6u9pm2nr5lij.jpg"}
     ]
     for animal in animales:
         if not Animal.query.get(animal["id"]):
-            db.session.add(Animal(id_animal=animal["id"], nombre=animal["nombre"]))
+            nuevo_animal = Animal(
+                id_animal=animal["id"], 
+                nombre=animal["nombre"], 
+                imagen=animal["imagen"]  # <-- Aquí agregamos la imagen
+            )
+            db.session.add(nuevo_animal)
 
-    # Usuarios (sin admins)
     usuarios = [
-        {"nombres": "Carlos", "apellidos": "Gómez", "telefono": "3123456789", "email": "carlos@example.com",
-         "num_documento": "12343533331", "tipo_doc": 2, "direccion": "Av. Siempre Viva 123", "id_rol": 2},
-        {"nombres": "Andrea", "apellidos": "Martínez", "telefono": "3109876543", "email": "andrea@example.com",
-         "num_documento": "1234353232", "tipo_doc": 1, "direccion": "Calle Luna 45", "id_rol": 3},
-        {"nombres": "Luis", "apellidos": "Fernández", "telefono": "3201234567", "email": "luis@example.com",
-         "num_documento": "123435121333", "tipo_doc": 3, "direccion": "Cra. del Sol 67", "id_rol": 2},
-        {"nombres": "Sofía", "apellidos": "Ramírez", "telefono": "3112233445", "email": "sofia@example.com",
-         "num_documento": "12343523234", "tipo_doc": 2, "direccion": "Cll Primavera 99", "id_rol": 3},
-        {"nombres": "Daniel", "apellidos": "López", "telefono": "3145678901", "email": "daniel@example.com",
-         "num_documento": "123435345435", "tipo_doc": 1, "direccion": "Calle Rosas 111", "id_rol": 2},
-        {"nombres": "María", "apellidos": "García", "telefono": "3156789012", "email": "maria@example.com",
-         "num_documento": "12343533126", "tipo_doc": 3, "direccion": "Cra. Flores 222", "id_rol": 3},
-        {"nombres": "Pedro", "apellidos": "Torres", "telefono": "3167890123", "email": "pedro@example.com",
-         "num_documento": "12343533467", "tipo_doc": 2, "direccion": "Av. Palmeras 333", "id_rol": 2},
-        {"nombres": "Laura", "apellidos": "Vargas", "telefono": "3178901234", "email": "laura@example.com",
-         "num_documento": "1234353323428", "tipo_doc": 1, "direccion": "Calle Orquídea 444", "id_rol": 3},
-        {"nombres": "Javier", "apellidos": "Rojas", "telefono": "3189012345", "email": "javier@example.com",
-         "num_documento": "1234353356569", "tipo_doc": 3, "direccion": "Cra. Sauce 555", "id_rol": 2},
-        {"nombres": "Ana", "apelli32423": "Castro", "telefono": "3190123456", "email": "ana@example.com",
-         "num_documento": "1000000010", "tipo_doc": 2, "direccion": "Av. Tulipanes 666", "id_rol": 3}
+        {"id_usuario": 2, "nombres": "Carlos", "apellidos": "Martínez", "telefono": "3111111111", "email": "carlos@example.com", "num_documento": "2222222222", "tipo_doc": 2, "direccion": "Calle 456", "id_rol": 2, "contrasena": "Carlos123"},
+        {"id_usuario": 3, "nombres": "María", "apellidos": "Gómez", "telefono": "3222222222", "email": "maria@example.com", "num_documento": "3333333333", "tipo_doc": 1, "direccion": "Carrera 789", "id_rol": 2, "contrasena": "Maria456"},
+        {"id_usuario": 4, "nombres": "Javier", "apellidos": "López", "telefono": "3333333333", "email": "javier@example.com", "num_documento": "4444444444", "tipo_doc": 3, "direccion": "Av. Siempre Viva", "id_rol": 3, "contrasena": "Javier789"},
+        {"id_usuario": 5, "nombres": "Luisa", "apellidos": "Fernández", "telefono": "3444444444", "email": "luisa@example.com", "num_documento": "5555555555", "tipo_doc": 2, "direccion": "Calle Luna", "id_rol": 3, "contrasena": "Luisa159"},
+        {"id_usuario": 6, "nombres": "Andrés", "apellidos": "Pérez", "telefono": "3555555555", "email": "andres@example.com", "num_documento": "6666666666", "tipo_doc": 4, "direccion": "Calle Sol", "id_rol": 2, "contrasena": "Andres753"},
+        {"id_usuario": 7, "nombres": "Sofía", "apellidos": "Ramírez", "telefono": "3666666666", "email": "sofia@example.com", "num_documento": "7777777777", "tipo_doc": 1, "direccion": "Calle Estrella", "id_rol": 3, "contrasena": "Sofia852"},
+        {"id_usuario": 8, "nombres": "Fernando", "apellidos": "García", "telefono": "3777777777", "email": "fernando@example.com", "num_documento": "8888888888", "tipo_doc": 3, "direccion": "Avenida Central", "id_rol": 2, "contrasena": "Fernando963"},
+        {"id_usuario": 9, "nombres": "Elena", "apellidos": "Castro", "telefono": "3888888888", "email": "elena@example.com", "num_documento": "9999999999", "tipo_doc": 2, "direccion": "Carrera Norte", "id_rol": 3, "contrasena": "Elena741"},
+        {"id_usuario": 10, "nombres": "David", "apellidos": "Torres", "telefono": "3999999999", "email": "david@example.com", "num_documento": "1010101010", "tipo_doc": 1, "direccion": "Calle Sur", "id_rol": 2, "contrasena": "David852"},
+        {"id_usuario": 11, "nombres": "Ana", "apellidos": "Vargas", "telefono": "4000000000", "email": "ana@example.com", "num_documento": "1111111112", "tipo_doc": 4, "direccion": "Avenida Oeste", "id_rol": 3, "contrasena": "Ana369"},
     ]
+
     for user in usuarios:
-        if not Usuario.query.filter_by(email=user["email"]).first():
+        if not Usuario.query.get(user["id_usuario"]):
             nuevo_usuario = Usuario(
+                id_usuario=user["id_usuario"],
                 nombres=user["nombres"],
                 apellidos=user["apellidos"],
                 telefono=user["telefono"],
@@ -110,8 +105,10 @@ def insertar_datos_iniciales():
                 estado="Activo",
                 id_rol=user["id_rol"]
             )
-            nuevo_usuario.contrasena = "Contraseña123"
+            nuevo_usuario.contrasena = user["contrasena"]
             db.session.add(nuevo_usuario)
+
+    db.session.commit()
 
     proveedores = [
         {"nombre": "Alimentos Felices S.A.", "telefono": "3001234567", "correo": "contacto@alimentosfelices.com", "estado": "Activo"},

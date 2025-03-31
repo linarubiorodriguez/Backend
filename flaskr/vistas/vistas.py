@@ -1425,19 +1425,34 @@ class VistaAnimales(Resource):
     def get(self):
         try:
             animales = Animal.query.all()
-            return jsonify({"animales": animales_schema.dump(animales)})
+            animales_serializados = [
+                {
+                    "id_animal": animal.id_animal,
+                    "nombre": animal.nombre,
+                    "imagen": animal.imagen
+                }
+                for animal in animales
+            ]
+            return jsonify({"animales": animales_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los animales: {str(e)}"}, 500
 
     @jwt_required()
     def post(self):
         try:
-            nombre = request.json.get("nombre")
+            datos = request.form  # Cambiado de request.json a request.form
+            if 'imagen' in request.files:
+                imagen = request.files['imagen']
+                upload_result = cloudinary.uploader.upload(imagen)
+                imagen_url = upload_result.get('secure_url')
+            else:
+                imagen_url = None
 
-            if not nombre:
-                return {"mensaje": "El nombre del animal es obligatorio."}, 400
+            nuevo_animal = Animal(
+                nombre=datos["nombre"],
+                imagen=imagen_url
+            )
 
-            nuevo_animal = Animal(nombre=nombre)
             db.session.add(nuevo_animal)
             db.session.commit()
 
@@ -1464,8 +1479,14 @@ class VistaAnimal(Resource):
             if not animal:
                 return {"mensaje": "Animal no encontrado."}, 404
 
-            nombre = request.json.get("nombre", animal.nombre)
-            animal.nombre = nombre
+            datos = request.form
+            animal.nombre = datos.get("nombre", animal.nombre)
+
+            # Gestionar nueva imagen si se envía
+            if 'imagen' in request.files:
+                imagen = request.files['imagen']
+                upload_result = cloudinary.uploader.upload(imagen)
+                animal.imagen = upload_result.get('secure_url')
 
             db.session.commit()
 

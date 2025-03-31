@@ -103,6 +103,7 @@ class Producto(db.Model):
 class Animal(db.Model):
     __tablename__ = 'animal'
     id_animal = db.Column(db.Integer, primary_key=True)
+    imagen = db.Column(db.String(255))
     nombre = db.Column(db.String(50), nullable=False, unique=True)
     
 class Factura(db.Model):
