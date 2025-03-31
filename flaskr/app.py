@@ -34,8 +34,8 @@ api.add_resource(VistaPrivRoles, '/rol/<int:id_Rol>')
 
 
 # Rutas para el formulario de pago
-api.add_resource(VistaPrivRol, '/FormPago') 
-api.add_resource(VistaPrivRoles, '/FormPago/<int:id_formulario>')  
+api.add_resource(VistaFormularioPago, '/FormPago') 
+api.add_resource(VistaFormularioPagos, '/FormPago/<int:id_formulario>')  
 
 
 # Rutas para Categoria
