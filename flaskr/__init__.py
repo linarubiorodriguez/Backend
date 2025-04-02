@@ -61,20 +61,20 @@ def insertar_datos_iniciales():
     ]
     for cat in categorias:
         if not Categoria.query.get(cat["id"]):
-            db.session.add(Categoria(id_categoria=cat["id"], nombre=cat["nombre"], descripcion=cat["descripcion"]))
+            db.session.add(Categoria(id_categoria=cat["id"], nombre=cat["nombre"], descripcion=cat["descripcion"], imagen=cat["imagen"]))
 
     # Animales
     animales = [
-        {"id": 1, "nombre": "Gatos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383469/r3rtvevdgp7bf4tsthzz.jpg"},
-        {"id": 2, "nombre": "Perros", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383524/ohpwe0ctjdwa6o3nvukw.jpg"},
-        {"id": 3, "nombre": "Conejos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743383533/ufssmdmu6u9pm2nr5lij.jpg"}
+        {"id": 1, "nombre": "Gatos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743612220/m5tiluc3fpyujvap7hnx.jpg"},
+        {"id": 2, "nombre": "Perros", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743542374/gzs5svkdfbsy22kys33g.avif"},
+        {"id": 3, "nombre": "Conejos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743542800/i89nzssblhlyjh1fc2pa.avif"}
     ]
     for animal in animales:
         if not Animal.query.get(animal["id"]):
             nuevo_animal = Animal(
                 id_animal=animal["id"], 
                 nombre=animal["nombre"], 
-                imagen=animal["imagen"]  # <-- Aquí agregamos la imagen
+                imagen=animal["imagen"] 
             )
             db.session.add(nuevo_animal)
 
