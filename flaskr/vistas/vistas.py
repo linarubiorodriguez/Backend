@@ -54,13 +54,10 @@ def allowed_file(filename):
 
 class VistaPrivClientes(Resource):
     @jwt_required()  # Requiere un JWT válido para acceder
-    # Obtener clientes
+ # Obtener clientes
     def get(self):
         try:
-            # Filtrar los usuarios con id_rol = 2 (clientes)
             clientes = Usuario.query.filter_by(id_rol=2).all()
-
-            # Serializar los datos para retornarlos en formato JSON
             clientes_serializados = [
                 {
                     "id_usuario": cliente.id_usuario,
@@ -70,15 +67,16 @@ class VistaPrivClientes(Resource):
                     "email": cliente.email,
                     "tipo_doc": cliente.tipo_doc,
                     "num_documento": cliente.num_documento,
-                    "direccion": cliente.direccion
+                    "direccion": cliente.direccion,
+                    "estado": cliente.estado  # <--- Asegurar que el estado se retorne
                 }
                 for cliente in clientes
             ]
-
             return jsonify({"clientes": clientes_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los clientes: {str(e)}"}, 500
-  
+
+    
     @jwt_required()  # Requiere un JWT válido para acceder
     # Agregar cliente
     def post(self):
@@ -979,24 +977,34 @@ class VistaLogIn(Resource):
 
 class VistaSignIn(Resource):
     def post(self):
-        nuevo_usuario = Usuario(
-            nombres=request.json["nombres"],
-            apellidos=request.json.get("apellidos"),
-            telefono=request.json.get("telefono"),
-            email=request.json.get("email"),
-            tipo_doc=request.json.get("tipo_doc"),
-            num_documento=request.json.get("num_documento"),
-            direccion=request.json.get("direccion"),
-            contrasena=request.json.get("contrasena")
-        )
-        nuevo_usuario.id_rol = 2
-        
-        db.session.add(nuevo_usuario)
-        db.session.commit()
-        
-        return {'mensaje': 'Usuario creado exitosamente'}, 201
+        try:
 
+            if Usuario.query.filter_by(email=request.json.get("email")).first():
+                return {'mensaje': 'El email ya está registrado'}, 400
 
+            if Usuario.query.filter_by(num_documento=request.json.get("num_documento")).first():
+                return {'mensaje': 'El número de documento ya está registrado'}, 400
+
+            nuevo_usuario = Usuario(
+                nombres=request.json["nombres"],
+                apellidos=request.json.get("apellidos"),
+                telefono=request.json.get("telefono"),
+                email=request.json.get("email"),
+                tipo_doc=request.json.get("tipo_doc"),
+                num_documento=request.json.get("num_documento"),
+                direccion=request.json.get("direccion"),
+                contrasena=request.json.get("contrasena")
+            )
+            nuevo_usuario.id_rol = 2
+            
+            db.session.add(nuevo_usuario)
+            db.session.commit()
+            
+            return {'mensaje': 'Usuario creado exitosamente'}, 201
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'mensaje': f'Error al crear usuario: {str(e)}'}, 500
 
 
 
