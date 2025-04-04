@@ -79,16 +79,16 @@ def insertar_datos_iniciales():
             db.session.add(nuevo_animal)
 
     usuarios = [
-        {"id_usuario": 2, "nombres": "Carlos", "apellidos": "Martínez", "telefono": "3111111111", "email": "carlos@example.com", "num_documento": "2222222222", "tipo_doc": 2, "direccion": "Calle 456", "id_rol": 2, "contrasena": "Carlos123"},
-        {"id_usuario": 3, "nombres": "María", "apellidos": "Gómez", "telefono": "3222222222", "email": "maria@example.com", "num_documento": "3333333333", "tipo_doc": 1, "direccion": "Carrera 789", "id_rol": 2, "contrasena": "Maria456"},
-        {"id_usuario": 4, "nombres": "Javier", "apellidos": "López", "telefono": "3333333333", "email": "javier@example.com", "num_documento": "4444444444", "tipo_doc": 3, "direccion": "Av. Siempre Viva", "id_rol": 3, "contrasena": "Javier789"},
-        {"id_usuario": 5, "nombres": "Luisa", "apellidos": "Fernández", "telefono": "3444444444", "email": "luisa@example.com", "num_documento": "5555555555", "tipo_doc": 2, "direccion": "Calle Luna", "id_rol": 3, "contrasena": "Luisa159"},
-        {"id_usuario": 6, "nombres": "Andrés", "apellidos": "Pérez", "telefono": "3555555555", "email": "andres@example.com", "num_documento": "6666666666", "tipo_doc": 4, "direccion": "Calle Sol", "id_rol": 2, "contrasena": "Andres753"},
-        {"id_usuario": 7, "nombres": "Sofía", "apellidos": "Ramírez", "telefono": "3666666666", "email": "sofia@example.com", "num_documento": "7777777777", "tipo_doc": 1, "direccion": "Calle Estrella", "id_rol": 3, "contrasena": "Sofia852"},
-        {"id_usuario": 8, "nombres": "Fernando", "apellidos": "García", "telefono": "3777777777", "email": "fernando@example.com", "num_documento": "8888888888", "tipo_doc": 3, "direccion": "Avenida Central", "id_rol": 2, "contrasena": "Fernando963"},
-        {"id_usuario": 9, "nombres": "Elena", "apellidos": "Castro", "telefono": "3888888888", "email": "elena@example.com", "num_documento": "9999999999", "tipo_doc": 2, "direccion": "Carrera Norte", "id_rol": 3, "contrasena": "Elena741"},
-        {"id_usuario": 10, "nombres": "David", "apellidos": "Torres", "telefono": "3999999999", "email": "david@example.com", "num_documento": "1010101010", "tipo_doc": 1, "direccion": "Calle Sur", "id_rol": 2, "contrasena": "David852"},
-        {"id_usuario": 11, "nombres": "Ana", "apellidos": "Vargas", "telefono": "4000000000", "email": "ana@example.com", "num_documento": "1111111112", "tipo_doc": 4, "direccion": "Avenida Oeste", "id_rol": 3, "contrasena": "Ana369"},
+        {"id_usuario": 2, "nombres": "Carlos", "apellidos": "Martínez", "telefono": "3111111111", "email": "carlos@gmail.com", "num_documento": "2222222222", "tipo_doc": 2, "direccion": "Calle 456", "id_rol": 2, "contrasena": "Carlos123"},
+        {"id_usuario": 3, "nombres": "María", "apellidos": "Gómez", "telefono": "3222222222", "email": "maria@gmail.com", "num_documento": "3333333333", "tipo_doc": 1, "direccion": "Carrera 789", "id_rol": 2, "contrasena": "Maria456"},
+        {"id_usuario": 4, "nombres": "Javier", "apellidos": "López", "telefono": "3333333333", "email": "javier@gmail.com", "num_documento": "4444444444", "tipo_doc": 3, "direccion": "Av. Siempre Viva", "id_rol": 3, "contrasena": "Javier789"},
+        {"id_usuario": 5, "nombres": "Luisa", "apellidos": "Fernández", "telefono": "3444444444", "email": "luisa@gmail.com", "num_documento": "5555555555", "tipo_doc": 2, "direccion": "Calle Luna", "id_rol": 3, "contrasena": "Luisa159"},
+        {"id_usuario": 6, "nombres": "Andrés", "apellidos": "Pérez", "telefono": "3555555555", "email": "andres@gmail.com", "num_documento": "6666666666", "tipo_doc": 4, "direccion": "Calle Sol", "id_rol": 2, "contrasena": "Andres753"},
+        {"id_usuario": 7, "nombres": "Sofía", "apellidos": "Ramírez", "telefono": "3666666666", "email": "sofia@gmail.com", "num_documento": "7777777777", "tipo_doc": 1, "direccion": "Calle Estrella", "id_rol": 3, "contrasena": "Sofia852"},
+        {"id_usuario": 8, "nombres": "Fernando", "apellidos": "García", "telefono": "3777777777", "email": "fernando@gmail.com", "num_documento": "8888888888", "tipo_doc": 3, "direccion": "Avenida Central", "id_rol": 2, "contrasena": "Fernando963"},
+        {"id_usuario": 9, "nombres": "Elena", "apellidos": "Castro", "telefono": "3888888888", "email": "elena@gmail.com", "num_documento": "9999999999", "tipo_doc": 2, "direccion": "Carrera Norte", "id_rol": 3, "contrasena": "Elena741"},
+        {"id_usuario": 10, "nombres": "David", "apellidos": "Torres", "telefono": "3999999999", "email": "david@gmail.com", "num_documento": "1010101010", "tipo_doc": 1, "direccion": "Calle Sur", "id_rol": 2, "contrasena": "David852"},
+        {"id_usuario": 11, "nombres": "Ana", "apellidos": "Vargas", "telefono": "4000000000", "email": "ana@gmail.com", "num_documento": "1111111112", "tipo_doc": 4, "direccion": "Avenida Oeste", "id_rol": 3, "contrasena": "Ana369"},
     ]
 
     for user in usuarios:
@@ -122,18 +122,22 @@ def insertar_datos_iniciales():
         if not Proveedor.query.filter_by(nombre=prov["nombre"]).first():
             db.session.add(Proveedor(nombre=prov["nombre"], telefono=prov["telefono"], correo=prov["correo"], estado=prov["estado"]))
 
-    # Marcas
+     # Marcas
     marcas = [
-        {"nombre": "Whiskas", "id_proveedor": 1},
-        {"nombre": "Purina", "id_proveedor": 2},
-        {"nombre": "Pedigree", "id_proveedor": 3},
-        {"nombre": "Royal Canin", "id_proveedor": 4},
-        {"nombre": "Eukanuba", "id_proveedor": 5},
-        {"nombre": "Hill's Science Diet", "id_proveedor": 6}
+        {"nombre": "Whiskas", "id_proveedor": 1, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743781699/fjawzkxyzjdi2ul26jcm.png"},
+        {"nombre": "Purina", "id_proveedor": 2, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743781822/y0lusfbfb4xwywao52k4.png"},
+        {"nombre": "Pedigree", "id_proveedor": 3, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743781881/xbmdxnjiwsyvtax5ofgm.jpg"},
+        {"nombre": "Royal Canin", "id_proveedor": 4, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743781929/zzfi1egafo0iwprl2lb1.svg"},
+        {"nombre": "Eukanuba", "id_proveedor": 5, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743782022/kvayev3eepxybxyyvdi4.png"},
+        {"nombre": "Hill's Science Diet", "id_proveedor": 6, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743782058/zlnizvrvnlmpne2x5iq2.jpg"}
     ]
     for marca in marcas:
         if not Marca.query.filter_by(nombre=marca["nombre"]).first():
-            db.session.add(Marca(nombre=marca["nombre"], id_proveedor=marca["id_proveedor"]))
+            db.session.add(Marca(
+                nombre=marca["nombre"], 
+                id_proveedor=marca["id_proveedor"],
+                imagen=marca["imagen"] 
+            ))
 
     db.session.commit()
 
@@ -148,7 +152,7 @@ def crear_superadmin():
             nombres='Paola',
             apellidos='Sanchez',
             telefono='3133334',
-            email='paola01@example.com',
+            email='paola01@gmail.com',
             num_documento='1111111111',
             tipo_doc=2,
             direccion='Calle 123',

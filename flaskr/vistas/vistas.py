@@ -1239,9 +1239,7 @@ class VistaPrivCategorias(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la categoría: {str(e)}"}, 500
-        
-
-# ----------------------- Gestion de admin para marcas
+        # ----------------------- Gestion de admin para marcas
 class VistaMarcas(Resource):
     # Obtener todas las marcas
     def get(self):
@@ -1252,7 +1250,8 @@ class VistaMarcas(Resource):
                     "id_marca": marca.id_marca,
                     "nombre": marca.nombre,
                     "estado": marca.estado,
-                    "id_proveedor": marca.id_proveedor
+                    "id_proveedor": marca.id_proveedor,
+                    "imagen": marca.imagen  # Nuevo campo
                 }
                 for marca in marcas
             ]
@@ -1264,13 +1263,23 @@ class VistaMarcas(Resource):
     @jwt_required()
     def post(self):
         try:
-            if not request.json.get("nombre") or not request.json.get("id_proveedor"):
+            datos = request.form
+            if not datos.get("nombre") or not datos.get("id_proveedor"):
                 return {"mensaje": "Faltan datos obligatorios."}, 400
 
+            imagen_url = None  # Inicializar la variable de imagen
+
+            # Si se proporciona una imagen, subirla a Cloudinary
+            if "imagen" in request.files and request.files["imagen"].filename:
+                imagen = request.files["imagen"]
+                upload_result = cloudinary.uploader.upload(imagen)
+                imagen_url = upload_result.get("secure_url")
+
             nueva_marca = Marca(
-                nombre=request.json["nombre"],
-                estado=request.json.get("estado", "Activo"),
-                id_proveedor=request.json["id_proveedor"]
+                nombre=datos["nombre"],
+                estado=datos.get("estado", "Activo"),
+                id_proveedor=datos["id_proveedor"],
+                imagen=imagen_url  # Nuevo campo
             )
 
             db.session.add(nueva_marca)
@@ -1281,7 +1290,9 @@ class VistaMarcas(Resource):
                 "marca": {
                     "id_marca": nueva_marca.id_marca,
                     "nombre": nueva_marca.nombre,
-                    "estado": nueva_marca.estado
+                    "estado": nueva_marca.estado,
+                    "id_proveedor": nueva_marca.id_proveedor,
+                    "imagen": nueva_marca.imagen  # Nuevo campo
                 }
             }, 201
         except IntegrityError:
@@ -1304,7 +1315,8 @@ class VistaMarca(Resource):
                 "id_marca": marca.id_marca,
                 "nombre": marca.nombre,
                 "estado": marca.estado,
-                "id_proveedor": marca.id_proveedor
+                "id_proveedor": marca.id_proveedor,
+                "imagen": marca.imagen  # Nuevo campo
             }
 
             return jsonify({"marca": marca_serializada})
@@ -1319,12 +1331,32 @@ class VistaMarca(Resource):
             if not marca:
                 return {"mensaje": "Marca no encontrada."}, 404
 
-            marca.nombre = request.json.get("nombre", marca.nombre)
-            marca.id_proveedor = request.json.get("id_proveedor", marca.id_proveedor)
+            datos = request.form
+            marca.nombre = datos.get("nombre", marca.nombre)
+            marca.id_proveedor = datos.get("id_proveedor", marca.id_proveedor)
+            marca.estado = datos.get("estado", marca.estado)
+
+            # Manejo de imágenes: Si hay una nueva, la subimos a Cloudinary
+            if "imagen" in request.files and request.files["imagen"].filename:
+                imagen = request.files["imagen"]
+                upload_result = cloudinary.uploader.upload(imagen)
+                marca.imagen = upload_result.get("secure_url")
+            # Si se proporciona una URL de imagen en el formulario, usarla
+            elif "imagen_url" in datos and datos["imagen_url"].strip():
+                marca.imagen = datos["imagen_url"]
 
             db.session.commit()
 
-            return {"mensaje": "Marca actualizada exitosamente."}, 200
+            return {
+                "mensaje": "Marca actualizada exitosamente.",
+                "marca": {
+                    "id_marca": marca.id_marca,
+                    "nombre": marca.nombre,
+                    "estado": marca.estado,
+                    "id_proveedor": marca.id_proveedor,
+                    "imagen": marca.imagen  
+                }
+            }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la marca: {str(e)}"}, 500
 
