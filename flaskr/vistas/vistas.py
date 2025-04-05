@@ -383,7 +383,11 @@ class VistaPrivProductos(Resource):
                     "stock": producto.stock,
                     "estado": producto.estado,
                     "id_categoria": producto.id_categoria,
+                    "id_marca": producto.id_marca,
+                    "id_animal": producto.id_animal,
                     "categoria": producto.categoria.nombre if producto.categoria else None,
+                    "marca": producto.marca.nombre if producto.marca else None,
+                    "animal": producto.animal.nombre if producto.animal else None,
                     "imagen": producto.imagen
                 }
                 for producto in productos
@@ -395,35 +399,40 @@ class VistaPrivProductos(Resource):
     @jwt_required()
     def post(self):
         try:
+            # Usar request.form para datos y request.files para la imagen
             datos = request.form
+            
+            nuevo_producto = Producto(
+                nombre=datos.get("nombre"),
+                descripcion=datos.get("descripcion"),
+                precio=float(datos.get("precio")),
+                stock=int(datos.get("stock")),
+                estado=datos.get("estado", "Disponible"),
+                id_categoria=int(datos.get("id_categoria")),
+                id_marca=int(datos.get("id_marca")),
+                id_animal=int(datos.get("id_animal"))
+            )
+
+            # Manejo de imagen
             if 'imagen' in request.files:
                 imagen = request.files['imagen']
-                upload_result = cloudinary.uploader.upload(imagen)
-                imagen_url = upload_result.get('secure_url')
-            else:
-                imagen_url = None
-
-            nuevo_producto = Producto(
-                nombre=datos["nombre"],
-                descripcion=datos.get("descripcion"),
-                precio=datos["precio"],
-                stock=datos["stock"],
-                estado=datos.get("estado", "Disponible"),
-                id_categoria=datos["id_categoria"],
-                imagen=imagen_url
-            )
+                if imagen.filename != '':
+                    upload_result = cloudinary.uploader.upload(imagen)
+                    nuevo_producto.imagen = upload_result.get('secure_url')
 
             db.session.add(nuevo_producto)
             db.session.commit()
 
-            return producto_schema.dump(nuevo_producto), 201
+            return {
+                "mensaje": "Producto creado exitosamente",
+                "producto": producto_schema.dump(nuevo_producto)
+            }, 201
         except IntegrityError:
             db.session.rollback()
             return {"mensaje": "Error de integridad en la base de datos."}, 400
         except Exception as e:
             return {"mensaje": f"Error al agregar el producto: {str(e)}"}, 500
-
-
+        
 class VistaPrivProducto(Resource):
     def get(self, id_producto):
         try:
