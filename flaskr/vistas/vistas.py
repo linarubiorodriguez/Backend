@@ -1,12 +1,15 @@
 from flask_restful import Resource
 from flask import jsonify, current_app, request
 import uuid
+from sqlalchemy import inspect
 from datetime import datetime
+from datetime import timedelta
 from ..modelos import db, Animal, AnimalSchema, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, Categoria, FormularioPago, FormularioPagoSchema, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
 from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import jwt_required, create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
-
+import time
+from flask import current_app
 # Cargar variables de entorno desde el archivo .env
 import os
 from dotenv import load_dotenv
@@ -380,6 +383,8 @@ class VistaPrivProductos(Resource):
                     "nombre": producto.nombre,
                     "descripcion": producto.descripcion,
                     "precio": producto.precio,
+                    "precio_descuento": producto.precio_descuento,  # Campo calculado
+                    "tiene_descuento": producto.descuento_activo is not None,  # Nuevo campo
                     "stock": producto.stock,
                     "estado": producto.estado,
                     "id_categoria": producto.id_categoria,
@@ -395,7 +400,6 @@ class VistaPrivProductos(Resource):
             return jsonify({"productos": productos_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los productos: {str(e)}"}, 500
-
     @jwt_required()
     def post(self):
         try:
@@ -501,37 +505,55 @@ class VistaPrivProducto(Resource):
             return {"mensaje": f"Error al desactivar el producto: {str(e)}"}, 500
 
 # ---------------------------- Vista para facturas
-class VistaPrivFacturas(Resource):    # Obtener todas las facturas
+class VistaPrivFacturas(Resource):
+    @jwt_required()
     def get(self):
         try:
-            # Obtener todas las facturas
+            # Verificar si la tabla existe (forma compatible con SQLAlchemy moderno)
+            inspector = inspect(db.engine)
+            if 'factura' not in inspector.get_table_names():
+                return {"mensaje": "Tabla de facturas no existe"}, 500
+
             facturas = Factura.query.all()
-
-            # Serializar los datos para retornarlos en formato JSON
-            facturas_serializadas = [
-                {
-                    "id_factura": factura.id_factura,
-                    "fecha_factura": factura.fecha_factura.strftime('%Y-%m-%d %H:%M:%S'),  # Formatear la fecha
-                    "total": factura.total,
-                    "iva_total": factura.iva_total,
-                    "estado": factura.estado,
-                    "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),  # Formatear la fecha
-                    "id_cliente": factura.id_cliente,
-                    "cliente": {
-                        "id_usuario": factura.cliente.id_usuario,
-                        "nombres": factura.cliente.nombres,
-                        "apellidos": factura.cliente.apellidos,
-                        "email": factura.cliente.email
+            
+            if not facturas:
+                return {"facturas": []}, 200
+            
+            facturas_serializadas = []
+            for factura in facturas:
+                try:
+                    factura_data = {
+                        "id_factura": factura.id_factura,
+                        "fecha_factura": factura.fecha_factura.isoformat() if factura.fecha_factura else None,
+                        "total": float(factura.total) if factura.total is not None else 0.0,
+                        "iva_total": float(factura.iva_total) if factura.iva_total is not None else 0.0,
+                        "estado": factura.estado,
+                        "fecha_vencimiento": factura.fecha_vencimiento.isoformat() if factura.fecha_vencimiento else None,
+                        "id_cliente": factura.id_cliente
                     }
-                }
-                for factura in facturas
-            ]
+                    
+                    # Agregar datos del cliente si existe la relación
+                    if hasattr(factura, 'cliente') and factura.cliente:
+                        factura_data["cliente"] = {
+                            "id_usuario": factura.cliente.id_usuario,
+                            "nombres": factura.cliente.nombres,
+                            "apellidos": factura.cliente.apellidos
+                        }
+                    
+                    facturas_serializadas.append(factura_data)
+                except Exception as e:
+                    current_app.logger.error(f"Error serializando factura {factura.id_factura}: {str(e)}")
+                    continue
 
-            return jsonify({"facturas": facturas_serializadas})
+            return {"facturas": facturas_serializadas}, 200
 
         except Exception as e:
-            return {"mensaje": f"Error al obtener las facturas: {str(e)}"}, 500
-
+            current_app.logger.error(f"Error en VistaPrivFacturas: {str(e)}", exc_info=True)
+            return {
+                "mensaje": "Error interno al obtener las facturas",
+                "error": str(e)
+            }, 500
+        
     # Agregar una nueva factura
     @jwt_required()
     def post(self):
@@ -564,38 +586,44 @@ class VistaPrivFacturas(Resource):    # Obtener todas las facturas
             return {"mensaje": f"Error al crear la factura: {str(e)}"}, 500
 
 class VistaPrivFactura(Resource):
-    # Obtener factura por ID
-    @jwt_required()  # Requiere un JWT válido para acceder
+    @jwt_required()
     def get(self, id_factura):
         try:
-            # Buscar la factura por id_factura
             factura = Factura.query.filter_by(id_factura=id_factura).first()
 
             if not factura:
                 return {"mensaje": "Factura no encontrada o no válida."}, 404
 
-            # Serializar los datos de la factura
+            # Construir respuesta de manera segura
             factura_serializada = {
                 "id_factura": factura.id_factura,
-                "fecha_factura": factura.fecha_factura.strftime('%Y-%m-%d %H:%M:%S'),
+                "fecha_factura": factura.fecha_factura.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_factura else None,
                 "total": factura.total,
                 "iva_total": factura.iva_total,
                 "estado": factura.estado,
-                "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),
-                "id_cliente": factura.id_cliente,
-                "cliente": {
+                "fecha_vencimiento": factura.fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S') if factura.fecha_vencimiento else None,
+                "id_cliente": factura.id_cliente
+            }
+
+            # Agregar datos del cliente solo si existe la relación
+            if factura.cliente:
+                factura_serializada["cliente"] = {
                     "id_usuario": factura.cliente.id_usuario,
                     "nombres": factura.cliente.nombres,
                     "apellidos": factura.cliente.apellidos,
                     "email": factura.cliente.email
                 }
-            }
 
-            return jsonify({"factura": factura_serializada})
+            return {"factura": factura_serializada}, 200
 
         except Exception as e:
-            return {"mensaje": f"Error al obtener la factura: {str(e)}"}, 500
-    
+            # Registrar el error real en los logs del servidor
+            current_app.logger.error(f"Error al obtener factura {id_factura}: {str(e)}")
+            return {
+                "mensaje": "Error al obtener la factura",
+                "error": str(e)  # Solo para desarrollo, quitar en producción
+            }, 500
+        
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar factura
     def put(self, id_factura):
@@ -650,53 +678,7 @@ class VistaPrivFactura(Resource):
             return {"mensaje": f"Error al actualizar el estado de la factura: {str(e)}"}, 500
 
 # ----------------------- Gestión formulario de pago
-class VistaFormularioPago(Resource):
-    @jwt_required()  # Requiere autenticación
-    def post(self):
-        try:
-            data = request.json
 
-            factura = Factura.query.filter_by(id_factura=data.get("id_factura")).first()
-            if not factura:
-                return {"mensaje": "Factura no encontrada."}, 404
-
-            if not data.get("tipo_pago"):
-                return {"mensaje": "El tipo de pago es obligatorio."}, 400
-
-            referencia_pago = str(uuid.uuid4())[:10] 
-
-            nuevo_pago = FormularioPago(
-                id_factura=factura.id_factura,
-                titular=data.get("titular"),
-                numero_tarjeta=data.get("numero_tarjeta"),
-                fecha_expiracion=data.get("fecha_expiracion"),
-                codigo_seguridad=data.get("codigo_seguridad"),
-                estado_pago="Pagado",  
-                referencia_pago=referencia_pago,
-                fecha_pago=datetime.utcnow()
-            )
-
-            db.session.add(nuevo_pago)
-
-            factura.estado = "Pagada"
-
-            db.session.commit()
-
-            return {
-                "mensaje": "Pago registrado exitosamente.",
-                "pago": {
-                    "id_formulario": nuevo_pago.id_formulario,
-                    "id_factura": nuevo_pago.id_factura,
-                    "titular": nuevo_pago.titular,
-                    "estado_pago": nuevo_pago.estado_pago,
-                    "referencia_pago": nuevo_pago.referencia_pago,
-                    "fecha_pago": nuevo_pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S')
-                }
-            }, 201
-
-        except Exception as e:
-            return {"mensaje": f"Error al procesar el pago: {str(e)}"}, 500
-        
 class VistaFormularioPagos(Resource):
     # Detalle del pago
     @jwt_required()
@@ -721,6 +703,104 @@ class VistaFormularioPagos(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener la información del pago: {str(e)}"}, 500
 
+# Ncesario para el formulario de pago
+class VistaProcesarPago(Resource):
+    @jwt_required()
+    def post(self):
+        try:
+            data = request.get_json()
+            
+            # Validación exhaustiva
+            required_fields = ["id_factura", "tipo_pago"]
+            if not all(field in data for field in required_fields):
+                return {"mensaje": "Faltan campos obligatorios"}, 400
+                
+            if data["tipo_pago"] not in ['tarjeta', 'efectivo', 'transferencia']:
+                return {"mensaje": "Tipo de pago no válido"}, 400
+
+            factura = Factura.query.get(data["id_factura"])
+            if not factura:
+                return {"mensaje": "Factura no encontrada"}, 404
+                
+            if factura.estado != "Pendiente":
+                return {"mensaje": "La factura ya fue procesada"}, 400
+
+            # Validaciones específicas para tarjeta
+            if data["tipo_pago"] == "tarjeta":
+                card_fields = ["titular", "numero_tarjeta", "fecha_expiracion", "codigo_seguridad"]
+                if not all(field in data for field in card_fields):
+                    return {"mensaje": "Faltan datos de la tarjeta"}, 400
+                
+                if not data["numero_tarjeta"].isdigit() or len(data["numero_tarjeta"]) != 16:
+                    return {"mensaje": "Número de tarjeta no válido"}, 400
+                
+                try:
+                    month, year = map(int, data["fecha_expiracion"].split('/'))
+                    current_year = datetime.now().year % 100
+                    current_month = datetime.now().month
+                    
+                    if (year < current_year) or (year == current_year and month < current_month):
+                        return {"mensaje": "Tarjeta expirada"}, 400
+                except:
+                    return {"mensaje": "Fecha de expiración no válida (use formato MM/YY)"}, 400
+                
+                if not data["codigo_seguridad"].isdigit() or len(data["codigo_seguridad"]) not in [3, 4]:
+                    return {"mensaje": "Código de seguridad no válido"}, 400
+            
+            # Crear registro de pago
+            nuevo_pago = FormularioPago(
+                id_factura=data["id_factura"],
+                tipo_pago=data["tipo_pago"],
+                titular=data.get("titular", ""),
+                numero_tarjeta=data.get("numero_tarjeta", ""),
+                fecha_expiracion=data.get("fecha_expiracion", ""),
+                codigo_seguridad=data.get("codigo_seguridad", ""),
+                estado_pago="Procesando",
+                referencia_pago=f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            )
+            
+            db.session.add(nuevo_pago)
+            
+            # Simular procesamiento
+            if data["tipo_pago"] == "tarjeta":
+                time.sleep(2)
+                nuevo_pago.estado_pago = "Aprobado"
+                nuevo_pago.fecha_pago = datetime.utcnow()
+                factura.estado = "Pagada"
+                
+                # Vaciar carrito y actualizar stock
+                carrito = Carrito.query.filter_by(id_usuario=factura.id_cliente).first()
+                if carrito:
+                    DetalleCarrito.query.filter_by(id_carrito=carrito.id_carrito).delete()
+                
+                for detalle in factura.detalles:
+                    producto = Producto.query.get(detalle.id_producto)
+                    if producto:
+                        producto.stock -= detalle.cantidad
+            else:
+                nuevo_pago.estado_pago = "Pendiente"
+                factura.estado = "Pendiente"
+            
+            db.session.commit()
+            
+            return {
+                "mensaje": "Pago procesado exitosamente",
+                "pago": {
+                    "referencia_pago": nuevo_pago.referencia_pago,
+                    "estado_pago": nuevo_pago.estado_pago,
+                    "fecha_pago": nuevo_pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S') if nuevo_pago.fecha_pago else None
+                },
+                "carrito_vaciado": data["tipo_pago"] == "tarjeta",
+                "stock_actualizado": data["tipo_pago"] == "tarjeta"
+            }, 201
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error en VistaProcesarPago: {str(e)}", exc_info=True)
+            return {
+                "mensaje": "Error interno al procesar el pago",
+                "error": "Error en el servidor"
+            }, 500
 # ----------------------- Gestión de Proveedores
 
 class VistaAdminProveedores(Resource):
@@ -859,9 +939,11 @@ class VistaAgregarAlCarrito(Resource):
             id_producto = request.json.get("id_producto")
             cantidad = request.json.get("cantidad", 1)
 
-            if not id_usuario or not id_producto:
-                return {"mensaje": "Datos incompletos: se requiere id_usuario y id_producto."}, 400
-
+            # Validar que el producto existe y tiene precio
+            producto = Producto.query.get(id_producto)
+            if not producto or producto.precio is None:
+                return {"mensaje": "Producto no disponible"}, 400
+            
             # Buscar carrito del usuario, o crearlo si no existe
             carrito = Carrito.query.filter_by(id_usuario=id_usuario).first()
             if not carrito:
@@ -890,22 +972,45 @@ class VistaCarrito(Resource):
             if not carrito:
                 return {"mensaje": "Carrito no encontrado."}, 404
 
-            # Serializar productos en el carrito
-            productos_serializados = [
-                {
-                    "id_producto": detalle.id_producto,
-                    "nombre": detalle.producto.nombre,
+            # Serializar productos en el carrito con validación de precios
+            productos_serializados = []
+            for detalle in carrito.detalles:
+                producto = detalle.producto
+                
+                # Validar que el producto existe
+                if not producto:
+                    continue
+                    
+                # Determinar el precio a usar (precio_descuento si existe, sino precio normal)
+                precio = producto.precio_descuento if producto.precio_descuento is not None else producto.precio
+                
+                # Validar que el precio es válido
+                if precio is None:
+                    current_app.logger.error(f"Producto {producto.id_producto} no tiene precio")
+                    continue
+                
+                # Calcular subtotal solo si tenemos cantidad y precio válidos
+                subtotal = detalle.cantidad * precio if detalle.cantidad and precio else 0
+                
+                productos_serializados.append({
+                    "id_producto": producto.id_producto,
+                    "nombre": producto.nombre,
                     "cantidad": detalle.cantidad,
-                    "precio_unitario": detalle.producto.precio,
-                    "subtotal": detalle.cantidad * detalle.producto.precio
-                }
-                for detalle in carrito.productos
-            ]
+                    "precio": precio,
+                    "precio_original": producto.precio,
+                    "precio_descuento": producto.precio_descuento,
+                    "subtotal": subtotal,
+                    "imagen": producto.imagen
+                })
 
-            return jsonify({"productos": productos_serializados})
+            return {
+                "id_carrito": carrito.id_carrito,
+                "productos": productos_serializados
+            }, 200
         except Exception as e:
+            current_app.logger.error(f"Error al obtener el carrito: {str(e)}")
             return {"mensaje": f"Error al obtener el carrito: {str(e)}"}, 500
-
+        
 class VistaProductoCarrito(Resource):
 
     def put(self, id_carrito, id_producto):
@@ -940,31 +1045,158 @@ class VistaProductoCarrito(Resource):
             return {"mensaje": f"Error al eliminar producto: {str(e)}"}, 500
         
 class VistaProcesarCompra(Resource):
-    @jwt_required()  # Requiere un JWT válido para acceder
+    @jwt_required()
     def post(self, id_usuario):
         try:
             # Buscar carrito del usuario
             carrito = Carrito.query.filter_by(id_usuario=id_usuario).first()
-            if not carrito or not carrito.productos:
+            if not carrito or not carrito.detalles:
                 return {"mensaje": "El carrito está vacío o no existe."}, 400
 
-            # Procesar compra
-            total = sum(
-                detalle.cantidad * detalle.producto.precio
-                for detalle in carrito.productos
-            )
+            # Verificar stock antes de crear la factura
+            for detalle in carrito.detalles:
+                producto = detalle.producto
+                if not producto or producto.stock < detalle.cantidad:
+                    return {
+                        "mensaje": f"No hay suficiente stock para {producto.nombre if producto else 'producto desconocido'}",
+                        "producto": producto.nombre if producto else None,
+                        "stock_disponible": producto.stock if producto else 0,
+                        "solicitado": detalle.cantidad
+                    }, 400
 
-            # Vaciar carrito
-            for detalle in carrito.productos:
-                db.session.delete(detalle)
+            # Calcular totales
+            subtotal = sum(
+                detalle.cantidad * (detalle.producto.precio_descuento if detalle.producto.precio_descuento is not None else detalle.producto.precio)
+                for detalle in carrito.detalles
+            )
+            iva = subtotal * 0.16
+            total = subtotal + iva
+
+            # Crear factura con fecha de vencimiento (7 días después)
+            fecha_actual = datetime.utcnow()
+            fecha_vencimiento = fecha_actual + timedelta(days=7)
+            
+            nueva_factura = Factura(
+                fecha_factura=fecha_actual,
+                total=total,
+                iva_total=iva,
+                estado="Pendiente",
+                fecha_vencimiento=fecha_vencimiento,
+                id_cliente=id_usuario
+            )
+            
+            db.session.add(nueva_factura)
+            db.session.flush()
+
+            # Crear detalles de factura
+            for detalle in carrito.detalles:
+                precio = detalle.producto.precio_descuento if detalle.producto.precio_descuento is not None else detalle.producto.precio
+                nuevo_detalle = DetalleFactura(
+                    id_factura=nueva_factura.id_factura,
+                    id_producto=detalle.producto.id_producto,
+                    cantidad=detalle.cantidad,
+                    subtotal=detalle.cantidad * precio
+                )
+                db.session.add(nuevo_detalle)
 
             db.session.commit()
-            return {"mensaje": "Compra procesada exitosamente.", "total": total}, 200
+
+            return {
+                "mensaje": "Factura creada exitosamente. Proceda al pago.",
+                "id_factura": nueva_factura.id_factura,
+                "total": total,
+                "fecha_vencimiento": fecha_vencimiento.strftime('%Y-%m-%d %H:%M:%S'),
+                "productos": [
+                    {
+                        "id_producto": detalle.producto.id_producto,
+                        "nombre": detalle.producto.nombre,
+                        "cantidad": detalle.cantidad,
+                        "precio": detalle.producto.precio,
+                        "precio_descuento": detalle.producto.precio_descuento
+                    }
+                    for detalle in carrito.detalles
+                ]
+            }, 200
         except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error al procesar compra: {str(e)}")
             return {"mensaje": f"Error al procesar la compra: {str(e)}"}, 500
+        
+class VistaConfirmarPago(Resource):
+    @jwt_required()
+    def post(self, id_factura):
+        try:
+            # 1. Verificar y obtener la factura
+            factura = Factura.query.get(id_factura)
+            if not factura:
+                return {"mensaje": "Factura no encontrada"}, 404
+                
+            if factura.estado == "Pagada":
+                return {"mensaje": "La factura ya fue pagada anteriormente"}, 400
 
+            # 2. Obtener el carrito del usuario
+            carrito = Carrito.query.filter_by(id_usuario=factura.id_cliente).first()
 
+            # 3. Procesar cada producto (reducir stock)
+            productos_actualizados = []
+            for detalle_factura in factura.detalles:
+                producto = Producto.query.get(detalle_factura.id_producto)
+                if producto:
+                    # Verificar stock nuevamente
+                    if producto.stock < detalle_factura.cantidad:
+                        return {
+                            "mensaje": f"Stock insuficiente para {producto.nombre}",
+                            "producto": producto.nombre,
+                            "stock_actual": producto.stock,
+                            "solicitado": detalle_factura.cantidad
+                        }, 400
+                    
+                    # Reducir stock
+                    producto.stock -= detalle_factura.cantidad
+                    productos_actualizados.append({
+                        "id_producto": producto.id_producto,
+                        "nombre": producto.nombre,
+                        "nuevo_stock": producto.stock
+                    })
 
+            # 4. Vaciar el carrito si existe
+            if carrito:
+                # Eliminar todos los detalles del carrito
+                DetalleCarrito.query.filter_by(id_carrito=carrito.id_carrito).delete()
+                db.session.commit()
+
+            # 5. Actualizar estado de la factura
+            factura.estado = "Pagada"
+            factura.fecha_pago = datetime.utcnow()
+
+            # 6. Crear registro de pago
+            nuevo_pago = FormularioPago(
+                id_factura=factura.id_factura,
+                estado_pago="Aprobado",
+                referencia_pago=f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+                fecha_pago=datetime.utcnow()
+            )
+            db.session.add(nuevo_pago)
+
+            db.session.commit()
+
+            return {
+                "mensaje": "Pago confirmado exitosamente. Carrito vaciado y stock actualizado.",
+                "factura": {
+                    "id_factura": factura.id_factura,
+                    "referencia_pago": nuevo_pago.referencia_pago,
+                    "estado": factura.estado,
+                    "fecha_pago": factura.fecha_pago.strftime('%Y-%m-%d %H:%M:%S'),
+                    "total": factura.total
+                },
+                "productos_actualizados": productos_actualizados,
+                "carrito_vaciado": True if carrito else False
+            }, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error al confirmar pago: {str(e)}")
+            return {"mensaje": f"Error al confirmar el pago: {str(e)}"}, 500
 # ---------------- Parte de LOGIN
 class VistaLogIn(Resource):
     def post(self):
@@ -1213,6 +1445,22 @@ class VistaPrivCategoria(Resource):
 
 
 class VistaPrivCategorias(Resource):
+    def get(self, id_categoria):
+        try:
+            categoria = Categoria.query.get(id_categoria)
+            if not categoria:
+                return {"mensaje": "Categoría no encontrada"}, 404
+            return jsonify({
+                "categoria": {
+                    "id_categoria": categoria.id_categoria,
+                    "nombre": categoria.nombre,
+                    "descripcion": categoria.descripcion,
+                    "imagen": categoria.imagen
+                }
+            })
+        except Exception as e:
+            return {"mensaje": f"Error al obtener categoría: {str(e)}"}, 500
+        
     @jwt_required()
     def put(self, id_categoria):
         """Actualiza una categoría existente, incluyendo la imagen si se proporciona."""
@@ -1392,39 +1640,64 @@ class VistaMarca(Resource):
 class VistaDescuentos(Resource):
     def get(self):
         try:
-            descuentos = Descuento.query.all()
-            return jsonify({"descuentos": descuentos_schema.dump(descuentos)})
+            descuentos = Descuento.query.options(db.joinedload(Descuento.producto)).all()
+            return jsonify({
+                "descuentos": [{
+                    "id_descuento": d.id_descuento,
+                    "porcentaje_descuento": d.porcentaje_descuento,
+                    "fecha_inicio": d.fecha_inicio.isoformat() if d.fecha_inicio else None,
+                    "fecha_fin": d.fecha_fin.isoformat() if d.fecha_fin else None,
+                    "id_producto": d.id_producto,
+                    "producto": {
+                        "id_producto": d.producto.id_producto,
+                        "nombre": d.producto.nombre,
+                        "imagen": d.producto.imagen,
+                        "precio": d.producto.precio,
+                        "id_categoria": d.producto.id_categoria,
+                        "id_marca": d.producto.id_marca
+                    } if d.producto else None  # Manejar caso cuando producto es None
+                } for d in descuentos]
+            })
         except Exception as e:
-            return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500
-
-    @jwt_required()
+            return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500    @jwt_required()
     def post(self):
         try:
-            data = request.json
-            if not data.get("id_producto") or not data.get("porcentaje"):
-                return {"mensaje": "Faltan datos obligatorios."}, 400
+            data = request.get_json()
+            if not data:
+                return {"mensaje": "No se proporcionaron datos"}, 400
+                
+            # Validaciones obligatorias
+            if not data.get("id_producto"):
+                return {"mensaje": "El id_producto es obligatorio"}, 400
+            if not data.get("porcentaje_descuento"):  # Cambiado de 'porcentaje' a 'porcentaje_descuento'
+                return {"mensaje": "El porcentaje es obligatorio"}, 400
+
+            # Validar que el producto existe
+            producto = Producto.query.get(data["id_producto"])
+            if not producto:
+                return {"mensaje": "El producto especificado no existe"}, 400
 
             nuevo_descuento = Descuento(
                 id_producto=data["id_producto"],
-                porcentaje=data["porcentaje"],
+                porcentaje_descuento=data["porcentaje_descuento"],  # Cambiado para coincidir con el modelo
                 fecha_inicio=data.get("fecha_inicio"),
-                fecha_fin=data.get("fecha_fin"),
+                fecha_fin=data.get("fecha_fin")
             )
 
             db.session.add(nuevo_descuento)
             db.session.commit()
 
             return {
-                "mensaje": "Descuento agregado exitosamente.",
+                "mensaje": "Descuento agregado exitosamente",
                 "descuento": descuento_schema.dump(nuevo_descuento)
             }, 201
-
-        except IntegrityError:
+            
+        except IntegrityError as e:
             db.session.rollback()
-            return {"mensaje": "Error de integridad: El producto no existe."}, 400
+            return {"mensaje": f"Error de integridad: {str(e)}"}, 400
         except Exception as e:
-            return {"mensaje": f"Error al agregar el descuento: {str(e)}"}, 500
-
+            db.session.rollback()
+            return {"mensaje": f"Error inesperado al agregar descuento: {str(e)}"}, 500
 class VistaDescuento(Resource):
     def get(self, id_descuento):
         try:
@@ -1443,7 +1716,16 @@ class VistaDescuento(Resource):
                 return {"mensaje": "Descuento no encontrado."}, 404
 
             data = request.json
-            descuento.porcentaje = data.get("porcentaje", descuento.porcentaje)
+            
+            # Validar que el producto existe si se está cambiando
+            if 'id_producto' in data:
+                producto = Producto.query.get(data['id_producto'])
+                if not producto:
+                    return {"mensaje": "El producto especificado no existe"}, 400
+            
+            # Actualizar todos los campos incluyendo id_producto
+            descuento.id_producto = data.get("id_producto", descuento.id_producto)
+            descuento.porcentaje_descuento = data.get("porcentaje_descuento", descuento.porcentaje_descuento)
             descuento.fecha_inicio = data.get("fecha_inicio", descuento.fecha_inicio)
             descuento.fecha_fin = data.get("fecha_fin", descuento.fecha_fin)
 
@@ -1454,9 +1736,8 @@ class VistaDescuento(Resource):
                 "descuento": descuento_schema.dump(descuento)
             }, 200
         except Exception as e:
-            return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500
-
-    @jwt_required()
+            db.session.rollback()
+            return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500   @jwt_required()
     def delete(self, id_descuento):
         try:
             descuento = Descuento.query.get(id_descuento)
@@ -1478,7 +1759,8 @@ class VistaAnimales(Resource):
                 {
                     "id_animal": animal.id_animal,
                     "nombre": animal.nombre,
-                    "imagen": animal.imagen
+                    "imagen": animal.imagen,
+                    "estado": animal.estado  # Agregamos el estado a la respuesta
                 }
                 for animal in animales
             ]
@@ -1489,24 +1771,39 @@ class VistaAnimales(Resource):
     @jwt_required()
     def post(self):
         try:
-            datos = request.form  # Cambiado de request.json a request.form
-            if 'imagen' in request.files:
+            datos = request.form
+            if not datos.get("nombre"):
+                return {"mensaje": "El nombre es obligatorio."}, 400
+
+            imagen_url = None
+            if 'imagen' in request.files and request.files['imagen'].filename:
                 imagen = request.files['imagen']
                 upload_result = cloudinary.uploader.upload(imagen)
                 imagen_url = upload_result.get('secure_url')
-            else:
-                imagen_url = None
 
             nuevo_animal = Animal(
                 nombre=datos["nombre"],
-                imagen=imagen_url
+                imagen=imagen_url,
+                estado=datos.get("estado", "Activo")  # Estado por defecto "Activo"
             )
 
             db.session.add(nuevo_animal)
             db.session.commit()
 
-            return {"mensaje": "Animal agregado exitosamente.", "animal": animal_schema.dump(nuevo_animal)}, 201
+            return {
+                "mensaje": "Animal agregado exitosamente.",
+                "animal": {
+                    "id_animal": nuevo_animal.id_animal,
+                    "nombre": nuevo_animal.nombre,
+                    "imagen": nuevo_animal.imagen,
+                    "estado": nuevo_animal.estado
+                }
+            }, 201
+        except IntegrityError:
+            db.session.rollback()
+            return {"mensaje": "Error: El nombre del animal ya existe."}, 400
         except Exception as e:
+            db.session.rollback()
             return {"mensaje": f"Error al agregar el animal: {str(e)}"}, 500
 
 
@@ -1517,7 +1814,14 @@ class VistaAnimal(Resource):
             if not animal:
                 return {"mensaje": "Animal no encontrado."}, 404
 
-            return jsonify({"animal": animal_schema.dump(animal)})
+            return jsonify({
+                "animal": {
+                    "id_animal": animal.id_animal,
+                    "nombre": animal.nombre,
+                    "imagen": animal.imagen,
+                    "estado": animal.estado
+                }
+            })
         except Exception as e:
             return {"mensaje": f"Error al obtener el animal: {str(e)}"}, 500
 
@@ -1529,30 +1833,58 @@ class VistaAnimal(Resource):
                 return {"mensaje": "Animal no encontrado."}, 404
 
             datos = request.form
-            animal.nombre = datos.get("nombre", animal.nombre)
+            if 'nombre' in datos:
+                animal.nombre = datos['nombre']
 
             # Gestionar nueva imagen si se envía
-            if 'imagen' in request.files:
+            if 'imagen' in request.files and request.files['imagen'].filename:
                 imagen = request.files['imagen']
                 upload_result = cloudinary.uploader.upload(imagen)
                 animal.imagen = upload_result.get('secure_url')
+            # Si se proporciona una URL de imagen en el formulario, usarla
+            elif 'imagen_url' in datos and datos['imagen_url'].strip():
+                animal.imagen = datos['imagen_url']
 
             db.session.commit()
 
-            return {"mensaje": "Animal actualizado exitosamente.", "animal": animal_schema.dump(animal)}, 200
+            return {
+                "mensaje": "Animal actualizado exitosamente.",
+                "animal": {
+                    "id_animal": animal.id_animal,
+                    "nombre": animal.nombre,
+                    "imagen": animal.imagen,
+                    "estado": animal.estado
+                }
+            }, 200
+        except IntegrityError:
+            db.session.rollback()
+            return {"mensaje": "Error: El nombre del animal ya existe."}, 400
         except Exception as e:
+            db.session.rollback()
             return {"mensaje": f"Error al actualizar el animal: {str(e)}"}, 500
 
     @jwt_required()
-    def delete(self, id_animal):
+    def patch(self, id_animal):
         try:
             animal = Animal.query.get(id_animal)
             if not animal:
                 return {"mensaje": "Animal no encontrado."}, 404
 
-            db.session.delete(animal)
+            nuevo_estado = request.json.get("estado")
+            if nuevo_estado not in ["Activo", "Inactivo"]:
+                return {"mensaje": "Estado inválido, debe ser 'Activo' o 'Inactivo'."}, 400
+
+            animal.estado = nuevo_estado
             db.session.commit()
 
-            return {"mensaje": "Animal eliminado correctamente."}, 200
+            return {
+                "mensaje": f"Estado del animal actualizado a '{nuevo_estado}' correctamente.",
+                "animal": {
+                    "id_animal": animal.id_animal,
+                    "nombre": animal.nombre,
+                    "estado": animal.estado
+                }
+            }, 200
         except Exception as e:
-            return {"mensaje": f"Error al eliminar el animal: {str(e)}"}, 500
+            db.session.rollback()
+            return {"mensaje": f"Error al actualizar el estado del animal: {str(e)}"}, 500

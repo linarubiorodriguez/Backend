@@ -87,9 +87,12 @@ class Producto(db.Model):
     nombre = db.Column(db.String(50), nullable=False)
     descripcion = db.Column(db.String(255))
     precio = db.Column(db.Float, nullable=False)
+    precio_descuento = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, nullable=False)
     imagen = db.Column(db.String(255))
     estado = db.Column(db.String(50), default="Disponible")
+    fecha_inicio_descuento = db.Column(db.DateTime)
+    fecha_fin_descuento = db.Column(db.DateTime)
 
     id_categoria = db.Column(db.Integer, db.ForeignKey('categoria.id_categoria'), nullable=False)
     categoria = db.relationship('Categoria', backref='productos')
@@ -100,11 +103,33 @@ class Producto(db.Model):
     id_animal = db.Column(db.Integer, db.ForeignKey('animal.id_animal'), nullable=False)
     animal = db.relationship('Animal', backref='productos')
 
+    # Relación corregida con descuentos
+    descuentos = db.relationship('Descuento', backref='producto', lazy=True)
+    
+    @property
+    def descuento_activo(self):
+        from datetime import datetime
+        ahora = datetime.utcnow()
+        descuento_activo = Descuento.query.filter(
+            Descuento.id_producto == self.id_producto,
+            Descuento.fecha_inicio <= ahora,
+            Descuento.fecha_fin >= ahora
+        ).first()
+        return descuento_activo
+    
+    @property
+    def precio_descuento(self):
+        descuento = self.descuento_activo
+        if descuento:
+            return self.precio * (1 - descuento.porcentaje_descuento / 100)
+        return None
+    
 class Animal(db.Model):
     __tablename__ = 'animal'
     id_animal = db.Column(db.Integer, primary_key=True)
     imagen = db.Column(db.String(255))
     nombre = db.Column(db.String(50), nullable=False, unique=True)
+    estado = db.Column(db.String(50), default="Activo", nullable=False)
     
 class Factura(db.Model):
     __tablename__ = 'factura'
@@ -119,7 +144,6 @@ class Factura(db.Model):
     cliente = db.relationship('Usuario', backref='facturas')
 
 
-# Modelo DetalleFactura
 class DetalleFactura(db.Model):
     id_detalle = db.Column(db.Integer, primary_key=True)
     cantidad = db.Column(db.Integer, nullable=False)
@@ -132,17 +156,20 @@ class DetalleFactura(db.Model):
     producto = db.relationship('Producto', backref='detalles')
 
 
-
 class Carrito(db.Model):
+    __tablename__ = 'carrito'
     id_carrito = db.Column(db.Integer, primary_key=True)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id_usuario'), nullable=False)
-    productos = db.relationship('DetalleCarrito', backref='carrito', lazy=True)
+    detalles = db.relationship('DetalleCarrito', backref='carrito', lazy=True, cascade="all, delete-orphan")
 
 class DetalleCarrito(db.Model):
+    __tablename__ = 'detalle_carrito'
     id_detalle = db.Column(db.Integer, primary_key=True)
     id_carrito = db.Column(db.Integer, db.ForeignKey('carrito.id_carrito'), nullable=False)
     id_producto = db.Column(db.Integer, db.ForeignKey('producto.id_producto'), nullable=False)
-    cantidad = db.Column(db.Integer, nullable=False)
+    cantidad = db.Column(db.Integer, nullable=False, default=1)
+    
+    producto = db.relationship('Producto')
 
 class Descuento(db.Model):
     __tablename__ = 'descuento'
@@ -151,8 +178,6 @@ class Descuento(db.Model):
     porcentaje_descuento = db.Column(db.Float, nullable=False)
     fecha_inicio = db.Column(db.DateTime, nullable=False)
     fecha_fin = db.Column(db.DateTime, nullable=False)
-
-    producto = db.relationship('Producto', backref='descuentos')
 
 class FormularioPago(db.Model):
     __tablename__ = 'formulario_pago'
@@ -191,7 +216,7 @@ class DescuentoSchema(SQLAlchemyAutoSchema):
 
 class AnimalSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Descuento
+        model = Animal  
         include_relationships = True
         load_instance = True
 
@@ -212,15 +237,16 @@ class UsuarioSchema(SQLAlchemyAutoSchema):
 
 class TipoDocSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Usuario
+        model = TipoDoc  
         include_relationships = True
         load_instance = True
 
 class RolSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Usuario
+        model = Rol  
         include_relationships = True
         load_instance = True
+
 
 
 class CategoriaSchema(SQLAlchemyAutoSchema):
@@ -232,14 +258,13 @@ class CategoriaSchema(SQLAlchemyAutoSchema):
 class ProveedorSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Proveedor
-        include_relationship = True
+        include_relationships = True 
         load_instance = True
-
 
 class ProductoSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Producto
-        include_relationship = True
+        include_relationships = True  
         load_instance = True
         include_fk = True 
 

@@ -131,6 +131,7 @@ def insertar_datos_iniciales():
         {"nombre": "Eukanuba", "id_proveedor": 5, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743782022/kvayev3eepxybxyyvdi4.png"},
         {"nombre": "Hill's Science Diet", "id_proveedor": 6, "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743782058/zlnizvrvnlmpne2x5iq2.jpg"}
     ]
+
     for marca in marcas:
         if not Marca.query.filter_by(nombre=marca["nombre"]).first():
             db.session.add(Marca(
@@ -138,6 +139,45 @@ def insertar_datos_iniciales():
                 id_proveedor=marca["id_proveedor"],
                 imagen=marca["imagen"] 
             ))
+
+    productos = [
+        {
+            "nombre": "Comida Gatos Whiskas Adulto 1kg",
+            "descripcion": "Alimento balanceado para gatos adultos. Rico en proteínas y con sabor a carne.",
+            "precio": 10000.00,
+            "stock": 50,
+            "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1744085164/m6kjatsjge2pxeabuhkp.webp",
+            "id_categoria": 4, 
+            "id_marca": 1,      
+            "id_animal": 1     
+        },
+        {
+            "nombre": "Comida Perros Pedigree Adulto 3kg",
+            "descripcion": "Alimento completo para perros adultos. Ayuda a la digestión y fortalece el sistema inmune.",
+            "precio": 10000.00,
+            "stock": 30,
+            "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1744085236/bpqbmowqpakwcpnzlg84.webp",
+            "id_categoria": 4, 
+            "id_marca": 3,      
+            "id_animal": 2     
+        }
+    ]
+
+    for p in productos:
+        if not Producto.query.filter_by(nombre=p["nombre"]).first():
+            nuevo_producto = Producto(
+                nombre=p["nombre"],
+                descripcion=p["descripcion"],
+                precio=p["precio"],
+                stock=p["stock"],
+                imagen=p["imagen"],
+                id_categoria=p["id_categoria"],
+                id_marca=p["id_marca"],
+                id_animal=p["id_animal"],
+                fecha_inicio_descuento=None,
+                fecha_fin_descuento=None
+            )
+            db.session.add(nuevo_producto)
 
     db.session.commit()
 

@@ -9,9 +9,9 @@ from flaskr.vistas import (
     VistaAdminProveedor,
     VistaAdminProveedores, VistaCarrito,
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
-    VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPago, VistaFormularioPagos,
+    VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPagos,
     VistaPrivTipoDocs,
-    VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal
+    VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
 )
 
 
@@ -34,7 +34,6 @@ api.add_resource(VistaPrivRoles, '/rol/<int:id_Rol>')
 
 
 # Rutas para el formulario de pago
-api.add_resource(VistaFormularioPago, '/FormPago') 
 api.add_resource(VistaFormularioPagos, '/FormPago/<int:id_formulario>')  
 
 
@@ -62,11 +61,11 @@ api.add_resource(VistaPrivFactura, '/PrivFactura/<int:id_factura>')
 api.add_resource(VistaAdminProveedores, '/adminProveedor')
 api.add_resource(VistaAdminProveedor, '/adminProveedor/<int:id_proveedor>')
 
-# Gestión del carrito
+api.add_resource(VistaAgregarAlCarrito, '/Carrito/agregar')
 api.add_resource(VistaCarrito, '/Carrito/<int:id_usuario>')
-api.add_resource(VistaProductoCarrito, '/Compra/<int:id_usuario>')
-api.add_resource(VistaProcesarCompra, '/ProductoCarrito/<int:id_carrito>/<int:id_producto>')
-
+api.add_resource(VistaProductoCarrito, '/Carrito/producto/<int:id_carrito>/<int:id_producto>')
+api.add_resource(VistaConfirmarPago, '/confirmar-pago/<int:id_factura>')
+api.add_resource(VistaProcesarCompra, '/Carrito/procesar/<int:id_usuario>')
 # Gestión de marcas
 api.add_resource(VistaMarcas, '/PrivMarcas')
 api.add_resource(VistaMarca, '/PrivMarca/<int:id_marca>')
@@ -78,6 +77,8 @@ api.add_resource(VistaDescuento, '/descuentosProd/<int:id_descuento>')
 # Gestión de animales
 api.add_resource(VistaAnimales, '/animalesProd')
 api.add_resource(VistaAnimal, '/animalesProd/<int:id_animal>')
+
+api.add_resource(VistaProcesarPago, '/api/pagos/procesar')
 
 # Inicializar JWT
 jwt = JWTManager(app)
