@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restx import Resource, Namespace, fields
 from flask import jsonify, current_app, request
 import uuid
 from sqlalchemy import inspect
@@ -71,7 +71,7 @@ class VistaPrivClientes(Resource):
                     "tipo_doc": cliente.tipo_doc,
                     "num_documento": cliente.num_documento,
                     "direccion": cliente.direccion,
-                    "estado": cliente.estado  # <--- Asegurar que el estado se retorne
+                    "estado": cliente.estado  
                 }
                 for cliente in clientes
             ]

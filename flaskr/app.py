@@ -1,5 +1,5 @@
 from flaskr import create_app
-from flask_restful import Api
+from flask_restx import Api
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flaskr.vistas import (
@@ -14,11 +14,27 @@ from flaskr.vistas import (
     VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
 )
 
-
 app = create_app('default')
 CORS(app)
 
-api = Api(app)
+# Configuración mínima de Swagger
+api = Api(
+    app,
+    version='1.0',
+    title='API El Escondite Animal',
+    description='Documentación automática de la API',
+    doc='/swagger',  # Ruta para la UI de Swagger
+    authorizations={
+        'Bearer Auth': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization',
+            'description': "Usar: 'Bearer <JWT>'"
+        }
+    },
+    security='Bearer Auth'
+)
+
 
 # Autenticación
 api.add_resource(VistaLogIn, '/login')  
@@ -82,3 +98,6 @@ api.add_resource(VistaProcesarPago, '/api/pagos/procesar')
 
 # Inicializar JWT
 jwt = JWTManager(app)
+
+if __name__ == '__main__':
+    app.run(debug=True)
