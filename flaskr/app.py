@@ -11,7 +11,7 @@ from flaskr.vistas import (
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
     VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPagos,
     VistaPrivTipoDocs,
-    VistaMarcas, VistaMarca, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
+    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
 )
 
 app = create_app('default')
@@ -95,6 +95,12 @@ api.add_resource(VistaAnimales, '/animalesProd')
 api.add_resource(VistaAnimal, '/animalesProd/<int:id_animal>')
 
 api.add_resource(VistaProcesarPago, '/api/pagos/procesar')
+
+
+# Reportes
+api.add_resource(VistaReporteVentas, '/api/reportes/ventas')
+api.add_resource(VistaReporteProductos, '/api/reportes/productos')
+api.add_resource(VistaReporteUsuarios, '/api/reportes/usuarios')
 
 # Inicializar JWT
 jwt = JWTManager(app)

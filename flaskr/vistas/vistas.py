@@ -9,7 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import jwt_required, create_access_token
 from werkzeug.security import check_password_hash, generate_password_hash
 import time
+from .. import admin_required, staff_required
 from flask import current_app
+from sqlalchemy import func
 # Cargar variables de entorno desde el archivo .env
 import os
 from dotenv import load_dotenv
@@ -186,6 +188,7 @@ class VistaPrivCliente(Resource):
         except Exception as e:
             return {"mensaje": f"Error al actualizar el cliente: {str(e)}"}, 500
         
+    @admin_required    
     @jwt_required()
     def patch(self, id_usuario):
         try:
@@ -212,6 +215,7 @@ class VistaPrivCliente(Resource):
 # ----------------------- Gestion de admin para empleados
 
 class VistaAdminEmpleados(Resource): 
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Obtener empleados
     def get(self):
@@ -238,6 +242,7 @@ class VistaAdminEmpleados(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener los empleados: {str(e)}"}, 500
     
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Agregar empleado
     def post(self):
@@ -279,6 +284,7 @@ class VistaAdminEmpleados(Resource):
 
 
 class VistaAdminEmpleado(Resource): 
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     def get(self, id_usuario):
         try:
@@ -304,7 +310,8 @@ class VistaAdminEmpleado(Resource):
 
         except Exception as e:
             return {"mensaje": f"Error al obtener el empleado: {str(e)}"}, 500
-    
+
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar empleado
     def put(self, id_usuario):
@@ -342,7 +349,8 @@ class VistaAdminEmpleado(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el empleado: {str(e)}"}, 500
-    
+        
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
 
     # Desactivar empleado
@@ -400,6 +408,8 @@ class VistaPrivProductos(Resource):
             return jsonify({"productos": productos_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los productos: {str(e)}"}, 500
+        
+    @admin_required
     @jwt_required()
     def post(self):
         try:
@@ -489,7 +499,8 @@ class VistaPrivProducto(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el producto: {str(e)}"}, 500
-
+        
+    @admin_required
     @jwt_required()
     def patch(self, id_producto):
         try:
@@ -624,6 +635,7 @@ class VistaPrivFactura(Resource):
                 "error": str(e)  # Solo para desarrollo, quitar en producción
             }, 500
         
+    @admin_required       
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar factura
     def put(self, id_factura):
@@ -658,7 +670,8 @@ class VistaPrivFactura(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la factura: {str(e)}"}, 500
-
+    
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Actualizar estado de factura
     def patch(self, id_factura):
@@ -804,6 +817,7 @@ class VistaProcesarPago(Resource):
 # ----------------------- Gestión de Proveedores
 
 class VistaAdminProveedores(Resource):
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Obtener proveedores
     def get(self):
@@ -828,6 +842,7 @@ class VistaAdminProveedores(Resource):
             return {"mensaje": f"Error al obtener los proveedores: {str(e)}"}, 500
 
     # Agregar proveedor
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     def post(self):
         try:
@@ -861,6 +876,7 @@ class VistaAdminProveedores(Resource):
 
 
 class VistaAdminProveedor(Resource):
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Obtener proveedor por ID
     def get(self, id_proveedor):
@@ -883,6 +899,7 @@ class VistaAdminProveedor(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener el proveedor: {str(e)}"}, 500
 
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar proveedor
     def put(self, id_proveedor):
@@ -912,7 +929,8 @@ class VistaAdminProveedor(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el proveedor: {str(e)}"}, 500
-
+   
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Desactivar proveedor
     def patch(self, id_proveedor):
@@ -933,6 +951,7 @@ class VistaAdminProveedor(Resource):
 
 # -------------------------- Carrito y proceso
 class VistaAgregarAlCarrito(Resource):
+    @jwt_required()  # Requiere un JWT válido para acceder
     def post(self):
         try:
             id_usuario = request.json.get("id_usuario")
@@ -965,6 +984,7 @@ class VistaAgregarAlCarrito(Resource):
             return {"mensaje": f"Error al agregar producto al carrito: {str(e)}"}, 500
 
 class VistaCarrito(Resource):
+    @jwt_required()  # Requiere un JWT válido para acceder
     def get(self, id_usuario):
         try:
             # Buscar carrito del usuario
@@ -1012,7 +1032,7 @@ class VistaCarrito(Resource):
             return {"mensaje": f"Error al obtener el carrito: {str(e)}"}, 500
         
 class VistaProductoCarrito(Resource):
-
+    @jwt_required()  # Requiere un JWT válido para acceder
     def put(self, id_carrito, id_producto):
         try:
             nueva_cantidad = request.json.get("cantidad")
@@ -1030,7 +1050,8 @@ class VistaProductoCarrito(Resource):
             return {"mensaje": "Producto modificado exitosamente."}, 200
         except Exception as e:
             return {"mensaje": f"Error al modificar producto: {str(e)}"}, 500
- 
+        
+    @jwt_required()  # Requiere un JWT válido para acceder
     def delete(self, id_carrito, id_producto):
         try:
             detalle = DetalleCarrito.query.filter_by(id_carrito=id_carrito, id_producto=id_producto).first()
@@ -1206,16 +1227,25 @@ class VistaLogIn(Resource):
         usuario = Usuario.query.filter_by(email=u_email).first()  
         print(usuario)
         if usuario and usuario.verificar_contrasena(u_contrasena):
-            token_de_acceso = create_access_token(identity=request.json['email'])
+            usuario.ultimo_login = datetime.utcnow()  # Actualizar último login
+            db.session.commit()
+            user_id = str(usuario.id_usuario) 
+            
+            token_de_acceso = create_access_token(
+                identity=user_id, 
+                additional_claims={
+                    'rol': usuario.id_rol,
+                    'email': usuario.email
+                }
+            )
             return {
-                'usuario': usuario.id_usuario,
+                'usuario': user_id,  
                 'mensaje': 'Inicio de sesión exitoso',
                 'token_de_acceso': token_de_acceso,
             }, 200
         else:
             return {'mensaje': 'Email o contraseña incorrectos'}, 401
-
-
+        
 class VistaSignIn(Resource):
     def post(self):
         try:
@@ -1319,6 +1349,7 @@ class VistaPrivTipoDocs(Resource):
 
 
 class VistaPrivRol(Resource):
+
     @jwt_required()  # Requiere un JWT válido para acceder
     # Obtener todos los roles
     def get(self):
@@ -1335,7 +1366,8 @@ class VistaPrivRol(Resource):
             return jsonify({"roles": roles_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los roles: {str(e)}"}, 500
-
+    
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Agregar un nuevo rol
     def post(self):
@@ -1362,6 +1394,7 @@ class VistaPrivRol(Resource):
             return {"mensaje": f"Error al agregar el rol: {str(e)}"}, 500
 
 class VistaPrivRoles(Resource):
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar rol
     def put(self, id_Rol):
@@ -1405,7 +1438,8 @@ class VistaPrivCategoria(Resource):
             return jsonify({"categorias": categorias_serializadas})
         except Exception as e:
             return {"mensaje": f"Error al obtener las categorías: {str(e)}"}, 500
-
+        
+    @admin_required
     @jwt_required()
     def post(self):
         """Crea una nueva categoría con o sin imagen."""
@@ -1461,6 +1495,7 @@ class VistaPrivCategorias(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener categoría: {str(e)}"}, 500
         
+    @admin_required
     @jwt_required()
     def put(self, id_categoria):
         """Actualiza una categoría existente, incluyendo la imagen si se proporciona."""
@@ -1517,6 +1552,7 @@ class VistaMarcas(Resource):
             return {"mensaje": f"Error al obtener las marcas: {str(e)}"}, 500
 
     # Agregar una nueva marca
+    @admin_required
     @jwt_required()
     def post(self):
         try:
@@ -1581,6 +1617,7 @@ class VistaMarca(Resource):
             return {"mensaje": f"Error al obtener la marca: {str(e)}"}, 500
 
     # Actualizar marca
+    @admin_required
     @jwt_required()
     def put(self, id_marca):
         try:
@@ -1616,7 +1653,8 @@ class VistaMarca(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la marca: {str(e)}"}, 500
-
+    
+    @admin_required
     @jwt_required()
     def patch(self, id_marca):
         try:
@@ -1659,7 +1697,10 @@ class VistaDescuentos(Resource):
                 } for d in descuentos]
             })
         except Exception as e:
-            return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500    @jwt_required()
+            return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500    
+    
+    @admin_required        
+    @jwt_required()
     def post(self):
         try:
             data = request.get_json()
@@ -1698,6 +1739,7 @@ class VistaDescuentos(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error inesperado al agregar descuento: {str(e)}"}, 500
+        
 class VistaDescuento(Resource):
     def get(self, id_descuento):
         try:
@@ -1707,7 +1749,8 @@ class VistaDescuento(Resource):
             return jsonify({"descuento": descuento_schema.dump(descuento)})
         except Exception as e:
             return {"mensaje": f"Error al obtener el descuento: {str(e)}"}, 500
-
+    
+    @admin_required
     @jwt_required()
     def put(self, id_descuento):
         try:
@@ -1737,7 +1780,10 @@ class VistaDescuento(Resource):
             }, 200
         except Exception as e:
             db.session.rollback()
-            return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500   @jwt_required()
+            return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500  
+         
+    @admin_required        
+    @jwt_required()
     def delete(self, id_descuento):
         try:
             descuento = Descuento.query.get(id_descuento)
@@ -1767,7 +1813,8 @@ class VistaAnimales(Resource):
             return jsonify({"animales": animales_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los animales: {str(e)}"}, 500
-
+    
+    @admin_required
     @jwt_required()
     def post(self):
         try:
@@ -1825,6 +1872,7 @@ class VistaAnimal(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener el animal: {str(e)}"}, 500
 
+    @admin_required
     @jwt_required()
     def put(self, id_animal):
         try:
@@ -1862,7 +1910,8 @@ class VistaAnimal(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el animal: {str(e)}"}, 500
-
+        
+    @admin_required
     @jwt_required()
     def patch(self, id_animal):
         try:
@@ -1888,3 +1937,78 @@ class VistaAnimal(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el estado del animal: {str(e)}"}, 500
+
+
+# ----------------------------- Sistema de reportes
+
+class VistaReporteVentas(Resource):
+    @admin_required
+    def get(self):
+        try:
+            # Parámetros de fecha (opcionales)
+            start_date = request.args.get('start', default=(datetime.now() - timedelta(days=30)).isoformat())
+            end_date = request.args.get('end', default=datetime.now().isoformat())
+            
+            ventas = db.session.query(
+                func.date(Factura.fecha_factura).label('fecha'),
+                func.sum(Factura.total).label('total')
+            ).filter(
+                Factura.fecha_factura.between(start_date, end_date),
+                Factura.estado == 'Pagada'
+            ).group_by(func.date(Factura.fecha_factura)).all()
+
+            return jsonify([{
+                'fecha': v.fecha.isoformat() if v.fecha else None,
+                'total': float(v.total) if v.total else 0
+            } for v in ventas])
+            
+        except Exception as e:
+            return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
+
+class VistaReporteProductos(Resource):
+    @admin_required
+    def get(self):
+        try:
+            # Top 10 productos más vendidos
+            productos_top = db.session.query(
+                Producto.nombre,
+                func.sum(DetalleFactura.cantidad).label('vendidos'),
+                func.sum(DetalleFactura.subtotal).label('ingresos')
+            ).join(DetalleFactura).group_by(Producto.id_producto
+            ).order_by(func.sum(DetalleFactura.subtotal).desc()).limit(10).all()
+
+            # Productos con stock bajo
+            stock_bajo = Producto.query.filter(Producto.stock < 10).all()
+
+            return jsonify({
+                'top_productos': [{
+                    'nombre': p.nombre,
+                    'vendidos': p.vendidos,
+                    'ingresos': float(p.ingresos)
+                } for p in productos_top],
+                'stock_bajo': [{
+                    'id_producto': p.id_producto,
+                    'nombre': p.nombre,
+                    'stock': p.stock,
+                    'precio': float(p.precio)
+                } for p in stock_bajo]
+            })
+        except Exception as e:
+            return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
+
+class VistaReporteUsuarios(Resource):
+    @admin_required
+    def get(self):
+        try:
+            usuarios_activos = Usuario.query.filter_by(estado='Activo').count()
+            nuevos_clientes = Usuario.query.filter(
+                Usuario.id_rol == 2,  # Clientes
+                Usuario.ultimo_login >= (datetime.now() - timedelta(days=30))
+            ).count()
+
+            return jsonify({
+                'usuarios_activos': usuarios_activos,
+                'nuevos_clientes': nuevos_clientes
+            })
+        except Exception as e:
+            return {'mensaje': f'Error generando reporte: {str(e)}'}, 500

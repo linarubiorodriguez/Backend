@@ -44,6 +44,7 @@ class Usuario(db.Model):
 
     tipo_documento = db.relationship('TipoDoc', backref='usuarios')
     rol = db.relationship('Rol', backref='usuarios')
+    ultimo_login = db.Column(db.DateTime, nullable=True)  
 
     @property
     def contrasena(self):
@@ -63,6 +64,21 @@ class Usuario(db.Model):
     
     def esta_activo(self):
         return self.estado == "Activo"
+
+    def verificar_inactividad(self):
+        if self.ultimo_login and self.id_rol == 2:  # Solo para clientes (rol 2)
+            dias_inactividad = (datetime.utcnow() - self.ultimo_login).days
+            if dias_inactividad >= 7 and self.estado == "Activo":
+                self.estado = "Inactivo"
+                db.session.commit()
+                return True
+        return False
+    
+    def esta_inactivo(self):
+        if self.ultimo_login and self.id_rol == 2:
+            return (datetime.utcnow() - self.ultimo_login).days >= 7
+        return False
+
 
 class Proveedor(db.Model):
     id_proveedor = db.Column(db.Integer, primary_key=True)

@@ -1,10 +1,15 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from .modelos import db
-# __init__.py de flaskr
-from .modelos import db, Usuario, Rol, Producto, Categoria, Factura, DetalleFactura, Proveedor, Carrito, DetalleCarrito
+from .modelos import db, Usuario
+from flask_jwt_extended import JWTManager  # Importar JWTManager
 from werkzeug.security import generate_password_hash
+from functools import wraps
+from datetime import datetime
+from flask import current_app
+from datetime import timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask_jwt_extended import verify_jwt_in_request, get_jwt
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -16,10 +21,59 @@ def create_app(config_name):
 
     app.config['SQLALCHEMY_DATABASE_URI'] = FULL_URL_DB
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['JWT_SECRET_KEY'] = 'tu_clave_secreta_segura'
+    app.config['JWT_SECRET_KEY'] = '23989232klEl232Escondite2323'
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600  # 1 hora
 
     db.init_app(app)
     Migrate(app, db)
+    
+    # Configurar JWT
+    jwt = JWTManager(app)
+    
+    # Configurar callback para verificar claims del token
+    @jwt.additional_claims_loader
+    def add_claims_to_access_token(identity):
+        usuario = Usuario.query.get(identity)
+        return {
+            'rol': usuario.id_rol,
+            'email': usuario.email
+        }
+    
+    # Configurar callback para token expirado
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return {
+            'mensaje': 'El token ha expirado',
+            'error': 'token_expired'
+        }, 401
+
+        # Agregar esta función dentro de create_app
+    def verificar_clientes_inactivos():
+        with app.app_context():
+            limite = datetime.utcnow() - timedelta(days=7)
+            clientes_inactivos = Usuario.query.filter(
+                Usuario.id_rol == 2,  # Solo clientes
+                Usuario.ultimo_login < limite,
+                Usuario.estado == "Activo"
+            ).all()
+            
+            for cliente in clientes_inactivos:
+                cliente.estado = "Inactivo"
+                current_app.logger.info(f"Cliente {cliente.email} marcado como inactivo")
+            
+            db.session.commit()
+            return f"{len(clientes_inactivos)} clientes marcados como inactivos"
+
+    # Configurar el scheduler solo si no estamos en modo testing
+    if app.config.get('TESTING') != True:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            func=verificar_clientes_inactivos,
+            trigger='interval',
+            days=1,  # Ejecutar diariamente
+            next_run_time=datetime.now() + timedelta(seconds=30)  # Primera ejecución 30 segs después del inicio
+        )
+        scheduler.start()
 
     with app.app_context():
         db.create_all()
@@ -28,9 +82,31 @@ def create_app(config_name):
 
     return app
 
+# Decorador para verificar rol de administrador
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request()
+        claims = get_jwt()
+        if claims['rol'] != 1:  # 1 es el id del rol Administrador
+            return {'mensaje': 'Acceso no autorizado'}, 403
+        return fn(*args, **kwargs)
+    return wrapper
+
+# Decorador para verificar rol de empleado o admin
+def staff_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request()
+        claims = get_jwt()
+        if claims['rol'] not in [1, 3]:  # 1=Admin, 3=Empleado
+            return {'mensaje': 'Acceso no autorizado'}, 403
+        return fn(*args, **kwargs)
+    return wrapper
+
 
 def insertar_datos_iniciales():
-    from .modelos import TipoDoc, Rol, Categoria, Animal, Usuario, Proveedor, Marca, db
+    from .modelos import TipoDoc, Rol, Categoria, Animal, Usuario, Proveedor, Marca, Producto, db
 
     # Tipos de Documento
     tipos_documento = [
