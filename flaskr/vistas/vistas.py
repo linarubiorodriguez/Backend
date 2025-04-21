@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
 # Importar y configurar Cloudinary para la carga de imágenes
 import cloudinary
 import cloudinary.uploader
@@ -376,7 +375,6 @@ class VistaAdminEmpleado(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el estado del empleado: {str(e)}"}, 500
-# ----------------------- Gestion de admin para empleados
 
 
 # ----------------------- Gestion de admin para productos

@@ -14,6 +14,12 @@ from flaskr.vistas import (
     VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
 )
 
+from flaskr.vistas.swagger import (
+    auth_ns, usuarios_ns, clientes_ns, empleados_ns, productos_ns,
+    categorias_ns, marcas_ns, animales_ns, descuentos_ns, facturas_ns,
+    pagos_ns, proveedores_ns, carrito_ns, reportes_ns, config_ns
+)
+
 app = create_app('default')
 CORS(app)
 
@@ -23,18 +29,36 @@ api = Api(
     version='1.0',
     title='API El Escondite Animal',
     description='Documentación automática de la API',
-    doc='/swagger',  # Ruta para la UI de Swagger
+    doc='/swagger',
     authorizations={
-        'Bearer Auth': {
+        'Bearer': {
             'type': 'apiKey',
             'in': 'header',
             'name': 'Authorization',
-            'description': "Usar: 'Bearer <JWT>'"
+            'description': "Ingresa el token JWT como 'Bearer <token>'"
         }
     },
-    security='Bearer Auth'
+    security=[{'Bearer': []}]  
 )
 
+# Registrar los namespaces (Solo para Swagger)
+api.add_namespace(auth_ns, path='/auth')
+api.add_namespace(usuarios_ns, path='/usuarios')
+api.add_namespace(clientes_ns, path='/clientes')
+api.add_namespace(empleados_ns, path='/empleados')
+api.add_namespace(productos_ns, path='/productos')
+api.add_namespace(categorias_ns, path='/categorias')
+api.add_namespace(marcas_ns, path='/marcas')
+api.add_namespace(animales_ns, path='/animales')
+api.add_namespace(descuentos_ns, path='/descuentos')
+api.add_namespace(facturas_ns, path='/facturas')
+api.add_namespace(pagos_ns, path='/pagos')
+api.add_namespace(carrito_ns, path='/carrito')
+api.add_namespace(proveedores_ns, path='/proveedores')
+api.add_namespace(reportes_ns, path='/reportes')
+api.add_namespace(config_ns, path='/config')
+
+# ------------------------------------------------------------
 
 # Autenticación
 api.add_resource(VistaLogIn, '/login')  
