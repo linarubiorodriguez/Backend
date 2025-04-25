@@ -11,7 +11,7 @@ from flaskr.vistas import (
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
     VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPagos,
     VistaPrivTipoDocs,
-    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
+    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaDebug, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago, VistaOtrosAnimales, VistaProductosPorCategoria,
 )
 
 from flaskr.vistas.swagger import (
@@ -117,6 +117,8 @@ api.add_resource(VistaDescuento, '/descuentosProd/<int:id_descuento>')
 # Gestión de animales
 api.add_resource(VistaAnimales, '/animalesProd')
 api.add_resource(VistaAnimal, '/animalesProd/<int:id_animal>')
+api.add_resource(VistaOtrosAnimales, '/productos/otros-animales')
+api.add_resource(VistaProductosPorCategoria, '/productos/categoria/<string:nombre_categoria>')
 
 api.add_resource(VistaProcesarPago, '/api/pagos/procesar')
 
@@ -126,6 +128,9 @@ api.add_resource(VistaReporteVentas, '/api/reportes/ventas')
 api.add_resource(VistaReporteProductos, '/api/reportes/productos')
 api.add_resource(VistaReporteUsuarios, '/api/reportes/usuarios')
 
+api.add_resource(VistaDebug, '/debug/categorias')
+
+        
 # Inicializar JWT
 jwt = JWTManager(app)
 

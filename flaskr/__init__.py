@@ -141,8 +141,8 @@ def insertar_datos_iniciales():
 
     # Animales
     animales = [
-        {"id": 1, "nombre": "Gatos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743612220/m5tiluc3fpyujvap7hnx.jpg"},
-        {"id": 2, "nombre": "Perros", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743542374/gzs5svkdfbsy22kys33g.avif"},
+        {"id": 1, "nombre": "Gato", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743612220/m5tiluc3fpyujvap7hnx.jpg"},
+        {"id": 2, "nombre": "Perro", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743542374/gzs5svkdfbsy22kys33g.avif"},
         {"id": 3, "nombre": "Conejos", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1743542800/i89nzssblhlyjh1fc2pa.avif"}
     ]
     for animal in animales:

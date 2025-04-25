@@ -12,6 +12,7 @@ import time
 from .. import admin_required, staff_required
 from flask import current_app
 from sqlalchemy import func
+from urllib.parse import unquote
 # Cargar variables de entorno desde el archivo .env
 import os
 from dotenv import load_dotenv
@@ -2010,3 +2011,117 @@ class VistaReporteUsuarios(Resource):
             })
         except Exception as e:
             return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
+
+class VistaOtrosAnimales(Resource):
+    def get(self):
+        try:
+            # Obtener IDs de perros y gatos
+            perro = Animal.query.filter(
+                func.lower(Animal.nombre) == func.lower('perro')
+            ).first()
+            gato = Animal.query.filter(
+                func.lower(Animal.nombre) == func.lower('gato')
+            ).first()
+            
+            if not perro or not gato:
+                return {"mensaje": "No se encontraron los animales base para filtrar"}, 404
+            
+            # Filtrar productos excluyendo perros y gatos
+            productos = Producto.query.filter(
+                Producto.id_animal.notin_([perro.id_animal, gato.id_animal])
+            ).all()
+            
+            return [p.to_dict() for p in productos], 200
+            
+        except Exception as e:
+            current_app.logger.error(f"Error en VistaOtrosAnimales: {str(e)}")
+            return {"mensaje": "Error interno del servidor"}, 500
+
+
+class VistaProductosPorCategoria(Resource):
+    def get(self, nombre_categoria):
+        try:
+            from urllib.parse import unquote
+            from sqlalchemy import func, or_
+            
+            # Decodificar y limpiar el nombre
+            nombre = unquote(nombre_categoria).strip().lower()
+            
+            # Mapeo flexible de nombres
+            mapeo_animales = {
+                'gatos': 'gato',
+                'perros': 'perro'
+            }
+            
+            # Dividir y validar formato
+            if ' para ' not in nombre:
+                return {"mensaje": "Formato debe ser 'Tipo para Animal'"}, 400
+                
+            tipo_producto, animal_nombre = nombre.split(' para ', 1)
+            tipo_producto = tipo_producto.strip()
+            animal_nombre = animal_nombre.strip()
+            
+            # Normalizar nombre de animal
+            animal_nombre = mapeo_animales.get(animal_nombre, animal_nombre)
+            
+            # Buscar animal (insensible a mayúsculas y singular/plural)
+            animal = Animal.query.filter(
+                or_(
+                    func.lower(Animal.nombre) == animal_nombre,
+                    func.lower(Animal.nombre) == animal_nombre + 's',
+                    func.lower(Animal.nombre) == animal_nombre[:-1]  # Quita 's' final
+                )
+            ).first()
+            
+            if not animal:
+                return {"mensaje": f"Animal '{animal_nombre}' no encontrado"}, 404
+            
+            # Buscar categoría (insensible a mayúsculas)
+            categoria = Categoria.query.filter(
+                func.lower(Categoria.nombre) == tipo_producto
+            ).first()
+            
+            if not categoria:
+                return {"mensaje": f"Categoría '{tipo_producto}' no encontrada"}, 404
+            
+            # Buscar productos
+            productos = Producto.query.filter(
+                Producto.id_categoria == categoria.id_categoria,
+                Producto.id_animal == animal.id_animal
+            ).all()
+            
+            return [{
+                "id_producto": p.id_producto,
+                "nombre": p.nombre,
+                "precio": float(p.precio),
+                "imagen": p.imagen,
+                "categoria": categoria.nombre,
+                "animal": animal.nombre,
+                "marca": p.marca.nombre if p.marca else None
+            } for p in productos], 200
+            
+        except Exception as e:
+            return {"mensaje": "Error interno", "error": str(e)}, 500
+        
+class VistaDebug(Resource):
+    def get(self):
+        try:
+            # Verificar animales con diferentes variaciones
+            animales_variaciones = ['gato', 'gatos', 'perro', 'perros']
+            animales_db = Animal.query.filter(
+                func.lower(Animal.nombre).in_([v.lower() for v in animales_variaciones])
+            ).all()
+            
+            # Verificar categorías
+            categorias_db = Categoria.query.filter(
+                func.lower(Categoria.nombre) == 'camas'
+            ).all()
+            
+            return {
+                "animales_encontrados": [a.nombre for a in animales_db],
+                "categoria_camas_encontrada": len(categorias_db) > 0,
+                "total_productos": Producto.query.count()
+            }, 200
+            
+        except Exception as e:
+            return {"error": str(e)}, 500
