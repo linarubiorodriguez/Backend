@@ -155,7 +155,9 @@ class Factura(db.Model):
     iva_total = db.Column(db.Float, nullable=True)  
     estado = db.Column(db.String(50), default="Pendiente", nullable=False)  
     fecha_vencimiento = db.Column(db.DateTime, nullable=True) 
-
+    metodo_pago = db.Column(db.String(50))  
+    referencia_pago = db.Column(db.String(50))  
+    
     id_cliente = db.Column(db.Integer, db.ForeignKey('usuario.id_usuario'), nullable=False)
     cliente = db.relationship('Usuario', backref='facturas')
 
@@ -208,8 +210,7 @@ class FormularioPago(db.Model):
     referencia_pago = db.Column(db.String(50), unique=True, nullable=True)  
     fecha_pago = db.Column(db.DateTime, nullable=True)  
 
-    factura = db.relationship('Factura', backref='formulario_pago')
-
+    factura = db.relationship('Factura', backref=db.backref('formulario_pago', uselist=False))
 
 class MarcaSchema(SQLAlchemyAutoSchema):
     class Meta:

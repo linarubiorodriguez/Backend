@@ -6,7 +6,7 @@ from datetime import datetime
 from datetime import timedelta
 from ..modelos import db, Animal, AnimalSchema, Marca, MarcaSchema, Descuento, DescuentoSchema, Usuario, UsuarioSchema, Categoria, FormularioPago, FormularioPagoSchema, CategoriaSchema, TipoDoc, TipoDocSchema, Rol, RolSchema, Proveedor, ProveedorSchema, Producto, ProductoSchema, Factura, FacturaSchema, DetalleFactura, DetalleFacturaSchema, Carrito, DetalleCarrito
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
 import time
 from .. import admin_required, staff_required
@@ -789,6 +789,13 @@ class VistaProcesarPago(Resource):
                     producto = Producto.query.get(detalle.id_producto)
                     if producto:
                         producto.stock -= detalle.cantidad
+                
+                factura.metodo_pago = data["tipo_pago"]
+                factura.referencia_pago = nuevo_pago.referencia_pago
+        
+                if data["tipo_pago"] == "tarjeta":
+                    factura.estado = "Pagada"
+
             else:
                 nuevo_pago.estado_pago = "Pendiente"
                 factura.estado = "Pendiente"
@@ -813,6 +820,89 @@ class VistaProcesarPago(Resource):
                 "mensaje": "Error interno al procesar el pago",
                 "error": "Error en el servidor"
             }, 500
+
+class VistaHistorialCompras(Resource):
+    @jwt_required()
+    def get(self):
+        try:
+            usuario_id = get_jwt_identity()
+            
+            # Incluir facturas Pendientes, Pagadas y Completadas
+            facturas = Factura.query.filter(
+                Factura.id_cliente == usuario_id,
+                Factura.estado.in_(["Pendiente", "Pagada", "Completada"])
+            ).order_by(Factura.fecha_factura.desc()).all()
+            
+            if not facturas:
+                return {"mensaje": "No hay historial de compras", "compras": []}, 200
+            
+            historial = []
+            for factura in facturas:
+                detalles = []
+                for detalle in factura.detalles:
+                    detalles.append({
+                        "producto": detalle.producto.nombre,
+                        "cantidad": detalle.cantidad,
+                        "precio_unitario": detalle.subtotal / detalle.cantidad,
+                        "subtotal": detalle.subtotal
+                    })
+                
+                # Agregar información específica según el estado
+                item_historial = {
+                    "id_factura": factura.id_factura,
+                    "fecha": factura.fecha_factura.isoformat(),
+                    "total": factura.total,
+                    "metodo_pago": factura.metodo_pago,
+                    "estado": factura.estado,
+                    "productos": detalles,
+                    "acciones_disponibles": self._obtener_acciones(factura)  # Nuevo método
+                }
+                
+                historial.append(item_historial)
+            
+            return {"compras": historial}, 200
+            
+        except Exception as e:
+            return {"mensaje": f"Error al obtener historial: {str(e)}"}, 500
+    
+    def _obtener_acciones(self, factura):
+        """Determina qué acciones puede realizar el usuario según el estado"""
+        if factura.estado == "Pendiente":
+            return ["cancelar", "reintentar_pago"]
+        elif factura.estado == "Pagada":
+            return ["ver_detalle", "descargar_factura"]
+        return ["ver_detalle"]
+
+class VistaCancelarPago(Resource):
+    @jwt_required()
+    def post(self, id_factura):
+        try:
+            usuario_id = get_jwt_identity()
+            factura = Factura.query.filter_by(
+                id_factura=id_factura,
+                id_cliente=usuario_id,
+                estado="Pendiente"
+            ).first()
+            
+            if not factura:
+                return {"mensaje": "Factura no encontrada o no cancelable"}, 404
+            
+            # Eliminar detalles primero
+            DetalleFactura.query.filter_by(id_factura=id_factura).delete()
+            
+            # Eliminar formulario de pago si existe
+            FormularioPago.query.filter_by(id_factura=id_factura).delete()
+            
+            # Finalmente eliminar la factura
+            db.session.delete(factura)
+            db.session.commit()
+            
+            return {"mensaje": "Compra cancelada exitosamente"}, 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al cancelar compra: {str(e)}"}, 500
+
 # ----------------------- Gestión de Proveedores
 
 class VistaAdminProveedores(Resource):
