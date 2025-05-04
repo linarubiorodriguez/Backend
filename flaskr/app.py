@@ -7,7 +7,7 @@ from flaskr.vistas import (
     VistaAdminEmpleados, VistaAdminEmpleado, VistaPrivProducto,
     VistaPrivProductos, VistaPrivFactura, VistaPrivFacturas,
     VistaAdminProveedor,
-    VistaAdminProveedores, VistaCarrito,
+    VistaAdminProveedores, VistaCarrito, VistaDetalleFactura,
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
     VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPagos,
     VistaPrivTipoDocs, VistaHistorialCompras, VistaCancelarPago,
@@ -134,7 +134,9 @@ api.add_resource(VistaDebug, '/debug/categorias')
 api.add_resource(VistaHistorialCompras, '/api/compras/historial')
 api.add_resource(VistaCancelarPago, '/api/pagos/cancelar/<int:id_factura>')
 
-        
+# Detalle factura
+api.add_resource(VistaDetalleFactura, '/factura/<int:id_factura>')
+
 # Inicializar JWT
 jwt = JWTManager(app)
 

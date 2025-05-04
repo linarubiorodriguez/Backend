@@ -519,12 +519,15 @@ class VistaPrivFacturas(Resource):
     @jwt_required()
     def get(self):
         try:
-            # Verificar si la tabla existe (forma compatible con SQLAlchemy moderno)
             inspector = inspect(db.engine)
             if 'factura' not in inspector.get_table_names():
                 return {"mensaje": "Tabla de facturas no existe"}, 500
 
-            facturas = Factura.query.all()
+            # Incluir formulario_pago en la consulta
+            facturas = Factura.query.options(
+                db.joinedload(Factura.cliente),
+                db.joinedload(Factura.formulario_pago)
+            ).all()
             
             if not facturas:
                 return {"facturas": []}, 200
@@ -539,15 +542,25 @@ class VistaPrivFacturas(Resource):
                         "iva_total": float(factura.iva_total) if factura.iva_total is not None else 0.0,
                         "estado": factura.estado,
                         "fecha_vencimiento": factura.fecha_vencimiento.isoformat() if factura.fecha_vencimiento else None,
-                        "id_cliente": factura.id_cliente
+                        "id_cliente": factura.id_cliente,
+                        "metodo_pago": factura.metodo_pago,  # Nuevo campo
+                        "referencia_pago": factura.referencia_pago  # Nuevo campo
                     }
                     
-                    # Agregar datos del cliente si existe la relación
-                    if hasattr(factura, 'cliente') and factura.cliente:
+                    # Agregar datos del cliente
+                    if factura.cliente:
                         factura_data["cliente"] = {
                             "id_usuario": factura.cliente.id_usuario,
                             "nombres": factura.cliente.nombres,
                             "apellidos": factura.cliente.apellidos
+                        }
+                    
+                    # Agregar datos de pago si existen
+                    if factura.formulario_pago:
+                        factura_data["formulario_pago"] = {
+                            "tipo_pago": factura.formulario_pago.tipo_pago,
+                            "referencia_pago": factura.formulario_pago.referencia_pago,
+                            "estado_pago": factura.formulario_pago.estado_pago
                         }
                     
                     facturas_serializadas.append(factura_data)
@@ -556,13 +569,9 @@ class VistaPrivFacturas(Resource):
                     continue
 
             return {"facturas": facturas_serializadas}, 200
-
         except Exception as e:
             current_app.logger.error(f"Error en VistaPrivFacturas: {str(e)}", exc_info=True)
-            return {
-                "mensaje": "Error interno al obtener las facturas",
-                "error": str(e)
-            }, 500
+            return {"mensaje": "Error interno al obtener las facturas", "error": str(e)}, 500
         
     # Agregar una nueva factura
     @jwt_required()
@@ -574,14 +583,16 @@ class VistaPrivFacturas(Resource):
             if not data.get("total") or not data.get("id_cliente"):
                 return {"mensaje": "Faltan datos obligatorios."}, 400
 
-            # Crear una nueva factura en estado "Pendiente"
+            # Crear una nueva factura con datos de pago si existen
             nueva_factura = Factura(
                 fecha_factura=datetime.utcnow(),
                 total=data["total"],
                 iva_total=data.get("iva_total", 0),
                 estado="Pendiente",
                 fecha_vencimiento=data.get("fecha_vencimiento"),
-                id_cliente=data["id_cliente"]
+                id_cliente=data["id_cliente"],
+                metodo_pago=data.get("metodo_pago"),  # Nuevo campo
+                referencia_pago=data.get("referencia_pago")  # Nuevo campo
             )
 
             db.session.add(nueva_factura)
@@ -591,7 +602,6 @@ class VistaPrivFacturas(Resource):
                 "mensaje": "Factura creada exitosamente.",
                 "id_factura": nueva_factura.id_factura
             }, 201
-
         except Exception as e:
             return {"mensaje": f"Error al crear la factura: {str(e)}"}, 500
 
@@ -737,27 +747,12 @@ class VistaProcesarPago(Resource):
             if factura.estado != "Pendiente":
                 return {"mensaje": "La factura ya fue procesada"}, 400
 
-            # Validaciones específicas para tarjeta
-            if data["tipo_pago"] == "tarjeta":
-                card_fields = ["titular", "numero_tarjeta", "fecha_expiracion", "codigo_seguridad"]
-                if not all(field in data for field in card_fields):
-                    return {"mensaje": "Faltan datos de la tarjeta"}, 400
-                
-                if not data["numero_tarjeta"].isdigit() or len(data["numero_tarjeta"]) != 16:
-                    return {"mensaje": "Número de tarjeta no válido"}, 400
-                
-                try:
-                    month, year = map(int, data["fecha_expiracion"].split('/'))
-                    current_year = datetime.now().year % 100
-                    current_month = datetime.now().month
-                    
-                    if (year < current_year) or (year == current_year and month < current_month):
-                        return {"mensaje": "Tarjeta expirada"}, 400
-                except:
-                    return {"mensaje": "Fecha de expiración no válida (use formato MM/YY)"}, 400
-                
-                if not data["codigo_seguridad"].isdigit() or len(data["codigo_seguridad"]) not in [3, 4]:
-                    return {"mensaje": "Código de seguridad no válido"}, 400
+            # Generar referencia de pago
+            referencia_pago = f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            
+            # Actualizar la factura directamente
+            factura.metodo_pago = data["tipo_pago"]
+            factura.referencia_pago = referencia_pago
             
             # Crear registro de pago
             nuevo_pago = FormularioPago(
@@ -768,14 +763,14 @@ class VistaProcesarPago(Resource):
                 fecha_expiracion=data.get("fecha_expiracion", ""),
                 codigo_seguridad=data.get("codigo_seguridad", ""),
                 estado_pago="Procesando",
-                referencia_pago=f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+                referencia_pago=referencia_pago
             )
             
             db.session.add(nuevo_pago)
             
-            # Simular procesamiento
+            # Procesamiento según tipo de pago
             if data["tipo_pago"] == "tarjeta":
-                time.sleep(2)
+                time.sleep(2)  # Simular procesamiento
                 nuevo_pago.estado_pago = "Aprobado"
                 nuevo_pago.fecha_pago = datetime.utcnow()
                 factura.estado = "Pagada"
@@ -789,13 +784,6 @@ class VistaProcesarPago(Resource):
                     producto = Producto.query.get(detalle.id_producto)
                     if producto:
                         producto.stock -= detalle.cantidad
-                
-                factura.metodo_pago = data["tipo_pago"]
-                factura.referencia_pago = nuevo_pago.referencia_pago
-        
-                if data["tipo_pago"] == "tarjeta":
-                    factura.estado = "Pagada"
-
             else:
                 nuevo_pago.estado_pago = "Pendiente"
                 factura.estado = "Pendiente"
@@ -804,22 +792,13 @@ class VistaProcesarPago(Resource):
             
             return {
                 "mensaje": "Pago procesado exitosamente",
-                "pago": {
-                    "referencia_pago": nuevo_pago.referencia_pago,
-                    "estado_pago": nuevo_pago.estado_pago,
-                    "fecha_pago": nuevo_pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S') if nuevo_pago.fecha_pago else None
-                },
-                "carrito_vaciado": data["tipo_pago"] == "tarjeta",
-                "stock_actualizado": data["tipo_pago"] == "tarjeta"
+                "referencia_pago": referencia_pago,
+                "estado": factura.estado
             }, 201
-            
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error en VistaProcesarPago: {str(e)}", exc_info=True)
-            return {
-                "mensaje": "Error interno al procesar el pago",
-                "error": "Error en el servidor"
-            }, 500
+            return {"mensaje": "Error interno al procesar el pago"}, 500
 
 class VistaHistorialCompras(Resource):
     @jwt_required()
@@ -853,9 +832,14 @@ class VistaHistorialCompras(Resource):
                     "fecha": factura.fecha_factura.isoformat(),
                     "total": factura.total,
                     "metodo_pago": factura.metodo_pago,
+                    "referencia_pago": factura.referencia_pago,
+                    "pago": {
+                        "tipo_pago": factura.formulario_pago.tipo_pago if factura.formulario_pago else None,
+                        "referencia": factura.formulario_pago.referencia_pago if factura.formulario_pago else None,
+                        "estado_pago": factura.formulario_pago.estado_pago if factura.formulario_pago else None
+                    },
                     "estado": factura.estado,
-                    "productos": detalles,
-                    "acciones_disponibles": self._obtener_acciones(factura)  # Nuevo método
+                    "productos": detalles
                 }
                 
                 historial.append(item_historial)
@@ -902,6 +886,80 @@ class VistaCancelarPago(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al cancelar compra: {str(e)}"}, 500
+
+# Detalle factura
+class VistaDetalleFactura(Resource):
+    @jwt_required()
+    def get(self, id_factura):
+        try:
+            usuario_id = get_jwt_identity()
+            
+            # Convertir a entero para comparación
+            try:
+                usuario_id_int = int(usuario_id)
+            except ValueError:
+                current_app.logger.error(f"ID de usuario no válido: {usuario_id}")
+                return {"mensaje": "Identificación de usuario no válida"}, 400
+                
+            factura = Factura.query.options(
+                db.joinedload(Factura.detalles).joinedload(DetalleFactura.producto),
+                db.joinedload(Factura.cliente),
+                db.joinedload(Factura.formulario_pago)
+            ).filter_by(id_factura=id_factura).first()
+
+            if not factura:
+                return {"mensaje": "Factura no encontrada"}, 404
+                
+            # Agrega logs para diagnóstico
+            current_app.logger.info(f"Comparando usuario JWT: {usuario_id_int} con cliente factura: {factura.id_cliente}")
+                
+            # Verificación convertida a entero
+            if factura.id_cliente != usuario_id_int:
+                return {"mensaje": "No autorizado para ver esta factura"}, 403
+                
+            # Serializar los datos de la factura
+            factura_data = {
+                "id_factura": factura.id_factura,
+                "fecha": factura.fecha_factura.strftime('%Y-%m-%d %H:%M:%S'),
+                "total": factura.total,
+                "iva_total": factura.iva_total,
+                "estado": factura.estado,
+                "metodo_pago": factura.metodo_pago,
+                "referencia_pago": factura.referencia_pago,
+                "cliente": {
+                    "nombres": factura.cliente.nombres,
+                    "apellidos": factura.cliente.apellidos,
+                    "email": factura.cliente.email
+                },
+                "productos": [],
+                "pago": None
+            }
+            
+            # Agregar detalles de productos
+            for detalle in factura.detalles:
+                producto_data = {
+                    "nombre": detalle.producto.nombre,
+                    "cantidad": detalle.cantidad,
+                    "precio_unitario": detalle.subtotal / detalle.cantidad,
+                    "subtotal": detalle.subtotal,
+                    "imagen": detalle.producto.imagen  # URL de la imagen del producto
+                }
+                factura_data["productos"].append(producto_data)
+            
+            # Agregar información de pago si existe
+            if factura.formulario_pago:
+                factura_data["pago"] = {
+                    "tipo_pago": factura.formulario_pago.tipo_pago,
+                    "estado_pago": factura.formulario_pago.estado_pago,
+                    "fecha_pago": factura.formulario_pago.fecha_pago.strftime('%Y-%m-%d %H:%M:%S') if factura.formulario_pago.fecha_pago else None,
+                    "referencia": factura.formulario_pago.referencia_pago
+                }
+            
+            return factura_data, 200
+            
+        except Exception as e:
+            current_app.logger.error(f"Error en VistaDetalleFactura: {str(e)}")
+            return {"mensaje": "Error al obtener el detalle de la factura"}, 500
 
 # ----------------------- Gestión de Proveedores
 
