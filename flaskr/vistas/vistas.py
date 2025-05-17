@@ -732,7 +732,7 @@ class VistaProcesarPago(Resource):
         try:
             data = request.get_json()
             
-            # Validación exhaustiva
+            # Validación
             required_fields = ["id_factura", "tipo_pago"]
             if not all(field in data for field in required_fields):
                 return {"mensaje": "Faltan campos obligatorios"}, 400
@@ -747,10 +747,10 @@ class VistaProcesarPago(Resource):
             if factura.estado != "Pendiente":
                 return {"mensaje": "La factura ya fue procesada"}, 400
 
-            # Generar referencia de pago
+            # Generar referencia
             referencia_pago = f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
             
-            # Actualizar la factura directamente
+            # Actualizar factura
             factura.metodo_pago = data["tipo_pago"]
             factura.referencia_pago = referencia_pago
             
@@ -768,18 +768,18 @@ class VistaProcesarPago(Resource):
             
             db.session.add(nuevo_pago)
             
-            # Procesamiento según tipo de pago
             if data["tipo_pago"] == "tarjeta":
                 time.sleep(2)  # Simular procesamiento
                 nuevo_pago.estado_pago = "Aprobado"
                 nuevo_pago.fecha_pago = datetime.utcnow()
                 factura.estado = "Pagada"
                 
-                # Vaciar carrito y actualizar stock
+                # Vaciar carrito
                 carrito = Carrito.query.filter_by(id_usuario=factura.id_cliente).first()
                 if carrito:
                     DetalleCarrito.query.filter_by(id_carrito=carrito.id_carrito).delete()
                 
+                # Actualizar stock
                 for detalle in factura.detalles:
                     producto = Producto.query.get(detalle.id_producto)
                     if producto:
@@ -790,16 +790,22 @@ class VistaProcesarPago(Resource):
             
             db.session.commit()
             
+            # Estructura de respuesta modificada
             return {
                 "mensaje": "Pago procesado exitosamente",
-                "referencia_pago": referencia_pago,
-                "estado": factura.estado
+                "pago": {
+                    "referencia_pago": referencia_pago,
+                    "estado_pago": factura.estado,
+                    "tipo_pago": data["tipo_pago"]
+                },
+                "carrito_vaciado": data["tipo_pago"] == "tarjeta"
             }, 201
+            
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error en VistaProcesarPago: {str(e)}", exc_info=True)
             return {"mensaje": "Error interno al procesar el pago"}, 500
-
+        
 class VistaHistorialCompras(Resource):
     @jwt_required()
     def get(self):
