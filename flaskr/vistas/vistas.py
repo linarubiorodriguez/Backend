@@ -187,7 +187,7 @@ class VistaPrivCliente(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el cliente: {str(e)}"}, 500
-        
+    
     @admin_required    
     @jwt_required()
     def patch(self, id_usuario):
@@ -214,7 +214,7 @@ class VistaPrivCliente(Resource):
             return {"mensaje": f"Error al actualizar el estado del cliente: {str(e)}"}, 500
 # ----------------------- Gestion de admin para empleados
 
-class VistaAdminEmpleados(Resource): 
+class VistaAdminEmpleados(Resource):
     @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Obtener empleados
@@ -349,7 +349,7 @@ class VistaAdminEmpleado(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el empleado: {str(e)}"}, 500
-        
+
     @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
 
@@ -407,8 +407,8 @@ class VistaPrivProductos(Resource):
             return jsonify({"productos": productos_serializados})
         except Exception as e:
             return {"mensaje": f"Error al obtener los productos: {str(e)}"}, 500
-        
-    @admin_required
+    
+    @staff_required
     @jwt_required()
     def post(self):
         try:
@@ -484,7 +484,6 @@ class VistaPrivProducto(Resource):
             producto.estado = datos.get("estado", producto.estado)
             producto.id_categoria = datos.get("id_categoria", producto.id_categoria)
 
-            # Gestionar nueva imagen si se envía
             if 'imagen' in request.files:
                 imagen = request.files['imagen']
                 upload_result = cloudinary.uploader.upload(imagen)
@@ -498,8 +497,8 @@ class VistaPrivProducto(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar el producto: {str(e)}"}, 500
-        
-    @admin_required
+    
+    @staff_required
     @jwt_required()
     def patch(self, id_producto):
         try:
@@ -513,7 +512,40 @@ class VistaPrivProducto(Resource):
             return {"mensaje": "Producto desactivado exitosamente."}, 200
         except Exception as e:
             return {"mensaje": f"Error al desactivar el producto: {str(e)}"}, 500
-
+            
+    @staff_required
+    @jwt_required()
+    def delete(self, id_producto):
+        try:
+            producto = Producto.query.filter_by(id_producto=id_producto).first()
+            if not producto:
+                return {"mensaje": "Producto no encontrado"}, 404
+                            
+            # Buscar detalles de factura que incluyan este producto
+            detalles_factura = DetalleFactura.query.filter_by(id_producto=id_producto).all()
+            
+            if detalles_factura:
+                # Obtener los estados de las facturas asociadas
+                facturas_ids = [detalle.id_factura for detalle in detalles_factura]
+                facturas = Factura.query.filter(Factura.id_factura.in_(facturas_ids)).all()
+                
+                # Verificar si alguna factura está pendiente o pagada
+                facturas_bloqueantes = [f for f in facturas if f.estado in ['Pendiente', 'Pagada']]
+                
+                if facturas_bloqueantes:
+                    return {
+                        "mensaje": "No se puede eliminar el producto porque está asociado a facturas pendientes o pagadas",
+                        "facturas_asociadas": [f.id_factura for f in facturas_bloqueantes]
+                    }, 400
+                
+            # Si no hay facturas bloqueantes, proceder con la eliminación
+            db.session.delete(producto)
+            db.session.commit()
+            
+            return {"mensaje": "Producto eliminado exitosamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al eliminar el producto: {str(e)}"}, 500
 # ---------------------------- Vista para facturas
 class VistaPrivFacturas(Resource):
     @jwt_required()
@@ -644,7 +676,7 @@ class VistaPrivFactura(Resource):
                 "error": str(e)  # Solo para desarrollo, quitar en producción
             }, 500
         
-    @admin_required       
+    @admin_required
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar factura
     def put(self, id_factura):
@@ -1501,79 +1533,6 @@ class VistaPrivTipoDocs(Resource):
             return {"mensaje": f"Error al actualizar el tipo de documento: {str(e)}"}, 500
 
 
-class VistaPrivRol(Resource):
-
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Obtener todos los roles
-    def get(self):
-        try:
-            roles = Rol.query.all()
-            roles_serializados = [
-                {
-                    "id_Rol": rol.id_Rol,
-                    "Nombre": rol.Nombre,
-                    "Descripcion": rol.Descripcion
-                }
-                for rol in roles
-            ]
-            return jsonify({"roles": roles_serializados})
-        except Exception as e:
-            return {"mensaje": f"Error al obtener los roles: {str(e)}"}, 500
-    
-    @admin_required
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Agregar un nuevo rol
-    def post(self):
-        try:
-            if not request.json.get("Nombre"):
-                return {"mensaje": "Faltan datos obligatorios."}, 400
-
-            nuevo_rol = Rol(
-                Nombre=request.json["Nombre"],
-                Descripcion=request.json.get("Descripcion")
-            )
-
-            db.session.add(nuevo_rol)
-            db.session.commit()
-
-            return {
-                "mensaje": "Rol agregado exitosamente.",
-                "rol": {
-                    "id_Rol": nuevo_rol.id_Rol,
-                    "Nombre": nuevo_rol.Nombre
-                }
-            }, 201
-        except Exception as e:
-            return {"mensaje": f"Error al agregar el rol: {str(e)}"}, 500
-
-class VistaPrivRoles(Resource):
-    @admin_required
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Modificar rol
-    def put(self, id_Rol):
-        try:
-            rol = Rol.query.filter_by(id_Rol=id_Rol).first()
-            if not rol:
-                return {"mensaje": "Rol no encontrado."}, 404
-
-            rol.Nombre = request.json.get("Nombre", rol.Nombre)
-            rol.Descripcion = request.json.get("Descripcion", rol.Descripcion)
-
-            db.session.commit()
-
-            return {
-                "mensaje": "Rol actualizado exitosamente.",
-                "rol": {
-                    "id_Rol": rol.id_Rol,
-                    "Nombre": rol.Nombre,
-                    "Descripcion": rol.Descripcion
-                }
-            }, 200
-        except Exception as e:
-            return {"mensaje": f"Error al actualizar el rol: {str(e)}"}, 500
-
-
-
 
 class VistaPrivCategoria(Resource):
     def get(self):
@@ -1592,7 +1551,7 @@ class VistaPrivCategoria(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener las categorías: {str(e)}"}, 500
         
-    @admin_required
+    @staff_required
     @jwt_required()
     def post(self):
         """Crea una nueva categoría con o sin imagen."""
@@ -1648,7 +1607,7 @@ class VistaPrivCategorias(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener categoría: {str(e)}"}, 500
         
-    @admin_required
+    @staff_required
     @jwt_required()
     def put(self, id_categoria):
         """Actualiza una categoría existente, incluyendo la imagen si se proporciona."""
@@ -1684,6 +1643,28 @@ class VistaPrivCategorias(Resource):
             }, 200
         except Exception as e:
             return {"mensaje": f"Error al actualizar la categoría: {str(e)}"}, 500
+            
+    @staff_required
+    @jwt_required()
+    def delete(self, id_categoria):
+        try:
+            categoria = Categoria.query.get(id_categoria)
+            if not categoria:
+                return {"mensaje": "Categoría no encontrada"}, 404
+                
+            # Verificar si hay productos asociados a esta categoría
+            productos_asociados = Producto.query.filter_by(id_categoria=id_categoria).count()
+            if productos_asociados > 0:
+                return {"mensaje": "No se puede eliminar la categoría porque tiene productos asociados"}, 400
+                
+            db.session.delete(categoria)
+            db.session.commit()
+            
+            return {"mensaje": "Categoría eliminada exitosamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al eliminar la categoría: {str(e)}"}, 500
+        
         # ----------------------- Gestion de admin para marcas
 class VistaMarcas(Resource):
     # Obtener todas las marcas
@@ -1705,7 +1686,7 @@ class VistaMarcas(Resource):
             return {"mensaje": f"Error al obtener las marcas: {str(e)}"}, 500
 
     # Agregar una nueva marca
-    @admin_required
+    @staff_required
     @jwt_required()
     def post(self):
         try:
@@ -1762,7 +1743,7 @@ class VistaMarca(Resource):
                 "nombre": marca.nombre,
                 "estado": marca.estado,
                 "id_proveedor": marca.id_proveedor,
-                "imagen": marca.imagen  # Nuevo campo
+                "imagen": marca.imagen
             }
 
             return jsonify({"marca": marca_serializada})
@@ -1770,7 +1751,7 @@ class VistaMarca(Resource):
             return {"mensaje": f"Error al obtener la marca: {str(e)}"}, 500
 
     # Actualizar marca
-    @admin_required
+    @staff_required
     @jwt_required()
     def put(self, id_marca):
         try:
@@ -1783,12 +1764,10 @@ class VistaMarca(Resource):
             marca.id_proveedor = datos.get("id_proveedor", marca.id_proveedor)
             marca.estado = datos.get("estado", marca.estado)
 
-            # Manejo de imágenes: Si hay una nueva, la subimos a Cloudinary
             if "imagen" in request.files and request.files["imagen"].filename:
                 imagen = request.files["imagen"]
                 upload_result = cloudinary.uploader.upload(imagen)
                 marca.imagen = upload_result.get("secure_url")
-            # Si se proporciona una URL de imagen en el formulario, usarla
             elif "imagen_url" in datos and datos["imagen_url"].strip():
                 marca.imagen = datos["imagen_url"]
 
@@ -1807,7 +1786,7 @@ class VistaMarca(Resource):
         except Exception as e:
             return {"mensaje": f"Error al actualizar la marca: {str(e)}"}, 500
     
-    @admin_required
+    @staff_required
     @jwt_required()
     def patch(self, id_marca):
         try:
@@ -1826,6 +1805,27 @@ class VistaMarca(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el estado de la marca: {str(e)}"}, 500
+            
+    @staff_required
+    @jwt_required()
+    def delete(self, id_marca):
+        try:
+            marca = Marca.query.get(id_marca)
+            if not marca:
+                return {"mensaje": "Marca no encontrada"}, 404
+                
+            # Verificar si hay productos asociados a esta marca
+            productos_asociados = Producto.query.filter_by(id_marca=id_marca).count()
+            if productos_asociados > 0:
+                return {"mensaje": "No se puede eliminar la marca porque tiene productos asociados"}, 400
+                
+            db.session.delete(marca)
+            db.session.commit()
+            
+            return {"mensaje": "Marca eliminada exitosamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al eliminar la marca: {str(e)}"}, 500
 
 # ----------------------- Gestion de admin para descuentos
 class VistaDescuentos(Resource):
@@ -1852,7 +1852,7 @@ class VistaDescuentos(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener los descuentos: {str(e)}"}, 500    
     
-    @admin_required        
+    @staff_required   
     @jwt_required()
     def post(self):
         try:
@@ -1903,7 +1903,7 @@ class VistaDescuento(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener el descuento: {str(e)}"}, 500
     
-    @admin_required
+    @staff_required
     @jwt_required()
     def put(self, id_descuento):
         try:
@@ -1935,7 +1935,7 @@ class VistaDescuento(Resource):
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el descuento: {str(e)}"}, 500  
          
-    @admin_required        
+    @staff_required        
     @jwt_required()
     def delete(self, id_descuento):
         try:
@@ -1967,7 +1967,7 @@ class VistaAnimales(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener los animales: {str(e)}"}, 500
     
-    @admin_required
+    @staff_required
     @jwt_required()
     def post(self):
         try:
@@ -2025,7 +2025,7 @@ class VistaAnimal(Resource):
         except Exception as e:
             return {"mensaje": f"Error al obtener el animal: {str(e)}"}, 500
 
-    @admin_required
+    @staff_required
     @jwt_required()
     def put(self, id_animal):
         try:
@@ -2037,12 +2037,10 @@ class VistaAnimal(Resource):
             if 'nombre' in datos:
                 animal.nombre = datos['nombre']
 
-            # Gestionar nueva imagen si se envía
             if 'imagen' in request.files and request.files['imagen'].filename:
                 imagen = request.files['imagen']
                 upload_result = cloudinary.uploader.upload(imagen)
                 animal.imagen = upload_result.get('secure_url')
-            # Si se proporciona una URL de imagen en el formulario, usarla
             elif 'imagen_url' in datos and datos['imagen_url'].strip():
                 animal.imagen = datos['imagen_url']
 
@@ -2064,7 +2062,7 @@ class VistaAnimal(Resource):
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el animal: {str(e)}"}, 500
         
-    @admin_required
+    @staff_required
     @jwt_required()
     def patch(self, id_animal):
         try:
@@ -2090,12 +2088,33 @@ class VistaAnimal(Resource):
         except Exception as e:
             db.session.rollback()
             return {"mensaje": f"Error al actualizar el estado del animal: {str(e)}"}, 500
-
+            
+    @staff_required
+    @jwt_required()
+    def delete(self, id_animal):
+        try:
+            animal = Animal.query.get(id_animal)
+            if not animal:
+                return {"mensaje": "Animal no encontrado"}, 404
+                
+            # Verificar si hay productos asociados a este animal
+            productos_asociados = Producto.query.filter_by(id_animal=id_animal).count()
+            if productos_asociados > 0:
+                return {"mensaje": "No se puede eliminar el animal porque tiene productos asociados"}, 400
+                
+            db.session.delete(animal)
+            db.session.commit()
+            
+            return {"mensaje": "Animal eliminado exitosamente"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"mensaje": f"Error al eliminar el animal: {str(e)}"}, 500
 
 # ----------------------------- Sistema de reportes
 
 class VistaReporteVentas(Resource):
-    @admin_required
+    @jwt_required()
+    @staff_required
     def get(self):
         try:
             # Parámetros de fecha (opcionales)
@@ -2119,7 +2138,8 @@ class VistaReporteVentas(Resource):
             return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
 
 class VistaReporteProductos(Resource):
-    @admin_required
+    @jwt_required()
+    @staff_required
     def get(self):
         try:
             # Top 10 productos más vendidos
@@ -2150,7 +2170,8 @@ class VistaReporteProductos(Resource):
             return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
 
 class VistaReporteUsuarios(Resource):
-    @admin_required
+    @jwt_required()
+    @staff_required
     def get(self):
         try:
             usuarios_activos = Usuario.query.filter_by(estado='Activo').count()
@@ -2165,117 +2186,3 @@ class VistaReporteUsuarios(Resource):
             })
         except Exception as e:
             return {'mensaje': f'Error generando reporte: {str(e)}'}, 500
-
-class VistaOtrosAnimales(Resource):
-    def get(self):
-        try:
-            # Obtener IDs de perros y gatos
-            perro = Animal.query.filter(
-                func.lower(Animal.nombre) == func.lower('perro')
-            ).first()
-            gato = Animal.query.filter(
-                func.lower(Animal.nombre) == func.lower('gato')
-            ).first()
-            
-            if not perro or not gato:
-                return {"mensaje": "No se encontraron los animales base para filtrar"}, 404
-            
-            # Filtrar productos excluyendo perros y gatos
-            productos = Producto.query.filter(
-                Producto.id_animal.notin_([perro.id_animal, gato.id_animal])
-            ).all()
-            
-            return [p.to_dict() for p in productos], 200
-            
-        except Exception as e:
-            current_app.logger.error(f"Error en VistaOtrosAnimales: {str(e)}")
-            return {"mensaje": "Error interno del servidor"}, 500
-
-
-class VistaProductosPorCategoria(Resource):
-    def get(self, nombre_categoria):
-        try:
-            from urllib.parse import unquote
-            from sqlalchemy import func, or_
-            
-            # Decodificar y limpiar el nombre
-            nombre = unquote(nombre_categoria).strip().lower()
-            
-            # Mapeo flexible de nombres
-            mapeo_animales = {
-                'gatos': 'gato',
-                'perros': 'perro'
-            }
-            
-            # Dividir y validar formato
-            if ' para ' not in nombre:
-                return {"mensaje": "Formato debe ser 'Tipo para Animal'"}, 400
-                
-            tipo_producto, animal_nombre = nombre.split(' para ', 1)
-            tipo_producto = tipo_producto.strip()
-            animal_nombre = animal_nombre.strip()
-            
-            # Normalizar nombre de animal
-            animal_nombre = mapeo_animales.get(animal_nombre, animal_nombre)
-            
-            # Buscar animal (insensible a mayúsculas y singular/plural)
-            animal = Animal.query.filter(
-                or_(
-                    func.lower(Animal.nombre) == animal_nombre,
-                    func.lower(Animal.nombre) == animal_nombre + 's',
-                    func.lower(Animal.nombre) == animal_nombre[:-1]  # Quita 's' final
-                )
-            ).first()
-            
-            if not animal:
-                return {"mensaje": f"Animal '{animal_nombre}' no encontrado"}, 404
-            
-            # Buscar categoría (insensible a mayúsculas)
-            categoria = Categoria.query.filter(
-                func.lower(Categoria.nombre) == tipo_producto
-            ).first()
-            
-            if not categoria:
-                return {"mensaje": f"Categoría '{tipo_producto}' no encontrada"}, 404
-            
-            # Buscar productos
-            productos = Producto.query.filter(
-                Producto.id_categoria == categoria.id_categoria,
-                Producto.id_animal == animal.id_animal
-            ).all()
-            
-            return [{
-                "id_producto": p.id_producto,
-                "nombre": p.nombre,
-                "precio": float(p.precio),
-                "imagen": p.imagen,
-                "categoria": categoria.nombre,
-                "animal": animal.nombre,
-                "marca": p.marca.nombre if p.marca else None
-            } for p in productos], 200
-            
-        except Exception as e:
-            return {"mensaje": "Error interno", "error": str(e)}, 500
-        
-class VistaDebug(Resource):
-    def get(self):
-        try:
-            # Verificar animales con diferentes variaciones
-            animales_variaciones = ['gato', 'gatos', 'perro', 'perros']
-            animales_db = Animal.query.filter(
-                func.lower(Animal.nombre).in_([v.lower() for v in animales_variaciones])
-            ).all()
-            
-            # Verificar categorías
-            categorias_db = Categoria.query.filter(
-                func.lower(Categoria.nombre) == 'camas'
-            ).all()
-            
-            return {
-                "animales_encontrados": [a.nombre for a in animales_db],
-                "categoria_camas_encontrada": len(categorias_db) > 0,
-                "total_productos": Producto.query.count()
-            }, 200
-            
-        except Exception as e:
-            return {"error": str(e)}, 500

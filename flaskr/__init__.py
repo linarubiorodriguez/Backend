@@ -22,7 +22,7 @@ def create_app(config_name):
     app.config['SQLALCHEMY_DATABASE_URI'] = FULL_URL_DB
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = '23989232klEl232Escondite2323'
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600  # 1 hora
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 5000 
 
     db.init_app(app)
     Migrate(app, db)

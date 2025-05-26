@@ -9,9 +9,9 @@ from flaskr.vistas import (
     VistaAdminProveedor,
     VistaAdminProveedores, VistaCarrito, VistaDetalleFactura,
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
-    VistaPrivTipoDoc, VistaPrivRol,  VistaPrivCategorias, VistaPrivRoles, VistaFormularioPagos,
+    VistaPrivTipoDoc, VistaPrivCategorias, VistaFormularioPagos,
     VistaPrivTipoDocs, VistaHistorialCompras, VistaCancelarPago,
-    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaDebug, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago, VistaOtrosAnimales, VistaProductosPorCategoria,
+    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
 )
 
 from flaskr.vistas.swagger import (
@@ -68,9 +68,6 @@ api.add_resource(VistaSignIn, '/signin')
 api.add_resource(VistaPrivTipoDoc, '/tipo_doc') 
 api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_TipoDocumento>')  
 
-# Rutas para Rol
-api.add_resource(VistaPrivRol, '/rol') 
-api.add_resource(VistaPrivRoles, '/rol/<int:id_Rol>')  
 
 
 # Rutas para el formulario de pago
@@ -117,8 +114,6 @@ api.add_resource(VistaDescuento, '/descuentosProd/<int:id_descuento>')
 # Gestión de animales
 api.add_resource(VistaAnimales, '/animalesProd')
 api.add_resource(VistaAnimal, '/animalesProd/<int:id_animal>')
-api.add_resource(VistaOtrosAnimales, '/productos/otros-animales')
-api.add_resource(VistaProductosPorCategoria, '/productos/categoria/<string:nombre_categoria>')
 
 api.add_resource(VistaProcesarPago, '/api/pagos/procesar')
 
@@ -128,7 +123,6 @@ api.add_resource(VistaReporteVentas, '/api/reportes/ventas')
 api.add_resource(VistaReporteProductos, '/api/reportes/productos')
 api.add_resource(VistaReporteUsuarios, '/api/reportes/usuarios')
 
-api.add_resource(VistaDebug, '/debug/categorias')
 
 # Historial de compras
 api.add_resource(VistaHistorialCompras, '/api/compras/historial')
