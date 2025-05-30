@@ -22,3 +22,4 @@ flask-swagger-ui==4.11.1
 APScheduler==3.10.4
 pytz==2024.1
 python-dateutil==2.9.0.post0
+Faker==24.9.0

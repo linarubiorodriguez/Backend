@@ -1116,23 +1116,25 @@ class VistaAdminProveedor(Resource):
             return {"mensaje": f"Error al actualizar el proveedor: {str(e)}"}, 500
    
     @admin_required
-    @jwt_required()  # Requiere un JWT válido para acceder
-    # Desactivar proveedor
+    @jwt_required()
     def patch(self, id_proveedor):
         try:
-            # Buscar el proveedor por ID
             proveedor = Proveedor.query.filter_by(id_proveedor=id_proveedor).first()
             if not proveedor:
                 return {"mensaje": "Proveedor no encontrado o no válido."}, 404
 
-            # Cambiar estado a "inactivo"
-            proveedor.estado = "inactivo"
+            # Alternar entre activo/inactivo
+            nuevo_estado = "inactivo" if proveedor.estado == "activo" else "activo"
+            proveedor.estado = nuevo_estado
+            
             db.session.commit()
 
-            return {"mensaje": "Proveedor desactivado exitosamente."}, 200
+            return {
+                "mensaje": f"Proveedor {nuevo_estado} exitosamente.",
+                "nuevo_estado": nuevo_estado
+            }, 200
         except Exception as e:
-            return {"mensaje": f"Error al desactivar el proveedor: {str(e)}"}, 500
-
+            return {"mensaje": f"Error al cambiar estado del proveedor: {str(e)}"}, 500
 
 # -------------------------- Carrito y proceso
 class VistaAgregarAlCarrito(Resource):
@@ -1456,7 +1458,7 @@ class VistaSignIn(Resource):
             db.session.add(nuevo_usuario)
             db.session.commit()
             
-            return {'mensaje': 'Usuario creado exitosamente'}, 201
+            return {'mensaje': 'Usuario creado exitosamente'}, 200
             
         except Exception as e:
             db.session.rollback()
