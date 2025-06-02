@@ -11,7 +11,7 @@ from flaskr.vistas import (
     VistaProductoCarrito, VistaProcesarCompra, VistaAgregarAlCarrito, VistaPrivCategoria,
     VistaPrivTipoDoc, VistaPrivCategorias, VistaFormularioPagos,
     VistaPrivTipoDocs, VistaHistorialCompras, VistaCancelarPago,
-    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago, VistaConfirmarPago
+    VistaMarcas, VistaMarca,  VistaReporteVentas, VistaReporteProductos, VistaReporteUsuarios, VistaDescuentos, VistaDescuento, VistaAnimales, VistaAnimal, VistaProcesarPago
 )
 
 from flaskr.vistas.swagger import (
@@ -101,7 +101,6 @@ api.add_resource(VistaAdminProveedor, '/adminProveedor/<int:id_proveedor>')
 api.add_resource(VistaAgregarAlCarrito, '/Carrito/agregar')
 api.add_resource(VistaCarrito, '/Carrito/<int:id_usuario>')
 api.add_resource(VistaProductoCarrito, '/Carrito/producto/<int:id_carrito>/<int:id_producto>')
-api.add_resource(VistaConfirmarPago, '/confirmar-pago/<int:id_factura>')
 api.add_resource(VistaProcesarCompra, '/Carrito/procesar/<int:id_usuario>')
 # Gestión de marcas
 api.add_resource(VistaMarcas, '/PrivMarcas')

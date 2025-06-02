@@ -1,8 +1,9 @@
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from .modelos import db, Usuario
-from flask_jwt_extended import JWTManager  # Importar JWTManager
+from flask_jwt_extended import JWTManager
 from werkzeug.security import generate_password_hash
 from functools import wraps
 from datetime import datetime
@@ -10,19 +11,19 @@ from flask import current_app
 from datetime import timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_jwt_extended import verify_jwt_in_request, get_jwt
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 def create_app(config_name):
     app = Flask(__name__)
-    USER_DB = 'root'
-    PASS_DB = ''
-    URL_DB = 'localhost'
-    NAME_DB = 'bdelesconditeanimal'
-    FULL_URL_DB = f'mysql+pymysql://{USER_DB}:{PASS_DB}@{URL_DB}/{NAME_DB}'
-
-    app.config['SQLALCHEMY_DATABASE_URI'] = FULL_URL_DB
+    
+    # Configuración desde variables de entorno
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['JWT_SECRET_KEY'] = '23989232klEl232Escondite2323'
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 5000 
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 5000))
 
     db.init_app(app)
     Migrate(app, db)
@@ -47,7 +48,6 @@ def create_app(config_name):
             'error': 'token_expired'
         }, 401
 
-        # Agregar esta función dentro de create_app
     def verificar_clientes_inactivos():
         with app.app_context():
             limite = datetime.utcnow() - timedelta(days=7)
@@ -64,14 +64,13 @@ def create_app(config_name):
             db.session.commit()
             return f"{len(clientes_inactivos)} clientes marcados como inactivos"
 
-    # Configurar el scheduler solo si no estamos en modo testing
     if app.config.get('TESTING') != True:
         scheduler = BackgroundScheduler()
         scheduler.add_job(
             func=verificar_clientes_inactivos,
             trigger='interval',
-            days=1,  # Ejecutar diariamente
-            next_run_time=datetime.now() + timedelta(seconds=30)  # Primera ejecución 30 segs después del inicio
+            days=1,
+            next_run_time=datetime.now() + timedelta(seconds=30)
         )
         scheduler.start()
 
@@ -275,7 +274,7 @@ def crear_superadmin():
             estado='Activo',
             id_rol=1
         )
-        nuevo_admin.contrasena = 'El1234Escondite5656Animal42224235'  # Usar el setter
+        nuevo_admin.contrasena = os.getenv('SUPERADMIN_PASSWORD')
         db.session.add(nuevo_admin)
         db.session.commit()
 

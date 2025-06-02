@@ -776,17 +776,12 @@ class VistaProcesarPago(Resource):
             if not factura:
                 return {"mensaje": "Factura no encontrada"}, 404
                 
-            if factura.estado != "Pendiente":
-                return {"mensaje": "La factura ya fue procesada"}, 400
+            if factura.estado == "Pagada":
+                return {"mensaje": "La factura ya fue pagada"}, 400
 
-            # Generar referencia
             referencia_pago = f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
             
-            # Actualizar factura
-            factura.metodo_pago = data["tipo_pago"]
-            factura.referencia_pago = referencia_pago
-            
-            # Crear registro de pago
+            # Procesamiento común para todos los tipos de pago
             nuevo_pago = FormularioPago(
                 id_factura=data["id_factura"],
                 tipo_pago=data["tipo_pago"],
@@ -797,47 +792,49 @@ class VistaProcesarPago(Resource):
                 estado_pago="Procesando",
                 referencia_pago=referencia_pago
             )
-            
             db.session.add(nuevo_pago)
             
+            # Lógica específica por tipo de pago
             if data["tipo_pago"] == "tarjeta":
-                time.sleep(2)  # Simular procesamiento
+                time.sleep(2)  # Simulación de procesamiento
+                
+                # Verificar stock antes de aprobar
+                for detalle in factura.detalles:
+                    producto = Producto.query.get(detalle.id_producto)
+                    if producto and producto.stock < detalle.cantidad:
+                        return {"mensaje": f"Stock insuficiente para {producto.nombre}"}, 400
+                
+                # Aprobar pago
                 nuevo_pago.estado_pago = "Aprobado"
                 nuevo_pago.fecha_pago = datetime.utcnow()
                 factura.estado = "Pagada"
+                factura.fecha_pago = datetime.utcnow()
                 
-                # Vaciar carrito
+                # Actualizar stock y carrito
+                for detalle in factura.detalles:
+                    producto = Producto.query.get(detalle.id_producto)
+                    producto.stock -= detalle.cantidad
+                
                 carrito = Carrito.query.filter_by(id_usuario=factura.id_cliente).first()
                 if carrito:
                     DetalleCarrito.query.filter_by(id_carrito=carrito.id_carrito).delete()
-                
-                # Actualizar stock
-                for detalle in factura.detalles:
-                    producto = Producto.query.get(detalle.id_producto)
-                    if producto:
-                        producto.stock -= detalle.cantidad
+                    
             else:
                 nuevo_pago.estado_pago = "Pendiente"
                 factura.estado = "Pendiente"
             
             db.session.commit()
             
-            # Estructura de respuesta modificada
             return {
                 "mensaje": "Pago procesado exitosamente",
-                "pago": {
-                    "referencia_pago": referencia_pago,
-                    "estado_pago": factura.estado,
-                    "tipo_pago": data["tipo_pago"]
-                },
-                "carrito_vaciado": data["tipo_pago"] == "tarjeta"
+                "estado": factura.estado,
+                "referencia": referencia_pago
             }, 201
             
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error en VistaProcesarPago: {str(e)}", exc_info=True)
-            return {"mensaje": "Error interno al procesar el pago"}, 500
-        
+            return {"mensaje": str(e)}, 500
+    
 class VistaHistorialCompras(Resource):
     @jwt_required()
     def get(self):
@@ -1330,81 +1327,6 @@ class VistaProcesarCompra(Resource):
             current_app.logger.error(f"Error al procesar compra: {str(e)}")
             return {"mensaje": f"Error al procesar la compra: {str(e)}"}, 500
         
-class VistaConfirmarPago(Resource):
-    @jwt_required()
-    def post(self, id_factura):
-        try:
-            # 1. Verificar y obtener la factura
-            factura = Factura.query.get(id_factura)
-            if not factura:
-                return {"mensaje": "Factura no encontrada"}, 404
-                
-            if factura.estado == "Pagada":
-                return {"mensaje": "La factura ya fue pagada anteriormente"}, 400
-
-            # 2. Obtener el carrito del usuario
-            carrito = Carrito.query.filter_by(id_usuario=factura.id_cliente).first()
-
-            # 3. Procesar cada producto (reducir stock)
-            productos_actualizados = []
-            for detalle_factura in factura.detalles:
-                producto = Producto.query.get(detalle_factura.id_producto)
-                if producto:
-                    # Verificar stock nuevamente
-                    if producto.stock < detalle_factura.cantidad:
-                        return {
-                            "mensaje": f"Stock insuficiente para {producto.nombre}",
-                            "producto": producto.nombre,
-                            "stock_actual": producto.stock,
-                            "solicitado": detalle_factura.cantidad
-                        }, 400
-                    
-                    # Reducir stock
-                    producto.stock -= detalle_factura.cantidad
-                    productos_actualizados.append({
-                        "id_producto": producto.id_producto,
-                        "nombre": producto.nombre,
-                        "nuevo_stock": producto.stock
-                    })
-
-            # 4. Vaciar el carrito si existe
-            if carrito:
-                # Eliminar todos los detalles del carrito
-                DetalleCarrito.query.filter_by(id_carrito=carrito.id_carrito).delete()
-                db.session.commit()
-
-            # 5. Actualizar estado de la factura
-            factura.estado = "Pagada"
-            factura.fecha_pago = datetime.utcnow()
-
-            # 6. Crear registro de pago
-            nuevo_pago = FormularioPago(
-                id_factura=factura.id_factura,
-                estado_pago="Aprobado",
-                referencia_pago=f"PAY-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-                fecha_pago=datetime.utcnow()
-            )
-            db.session.add(nuevo_pago)
-
-            db.session.commit()
-
-            return {
-                "mensaje": "Pago confirmado exitosamente. Carrito vaciado y stock actualizado.",
-                "factura": {
-                    "id_factura": factura.id_factura,
-                    "referencia_pago": nuevo_pago.referencia_pago,
-                    "estado": factura.estado,
-                    "fecha_pago": factura.fecha_pago.strftime('%Y-%m-%d %H:%M:%S'),
-                    "total": factura.total
-                },
-                "productos_actualizados": productos_actualizados,
-                "carrito_vaciado": True if carrito else False
-            }, 200
-            
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error al confirmar pago: {str(e)}")
-            return {"mensaje": f"Error al confirmar el pago: {str(e)}"}, 500
 # ---------------- Parte de LOGIN
 class VistaLogIn(Resource):
     def post(self):

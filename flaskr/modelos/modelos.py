@@ -44,17 +44,19 @@ class Usuario(db.Model):
 
     tipo_documento = db.relationship('TipoDoc', backref='usuarios')
     rol = db.relationship('Rol', backref='usuarios')
-    ultimo_login = db.Column(db.DateTime, nullable=True)  
+    ultimo_login = db.Column(db.DateTime, nullable=True) 
 
     @property
     def contrasena(self):
-        raise AttributeError("La contraseña no es un atributo legible.")
+        raise AttributeError('La contraseña no es un atributo legible')
     
     @contrasena.setter
-    
     def contrasena(self, contrasena):
-        self.contrasena_hash = generate_password_hash(contrasena, method='pbkdf2:sha256')
-
+        self.contrasena_hash = generate_password_hash(contrasena)
+    
+    def check_password(self, contrasena):
+        return check_password_hash(self.contrasena_hash, contrasena)
+    
     def verificar_contrasena(self, contrasena):
         resultado = check_password_hash(self.contrasena_hash, contrasena)
         return resultado
