@@ -827,8 +827,12 @@ class VistaProcesarPago(Resource):
             
             return {
                 "mensaje": "Pago procesado exitosamente",
-                "estado": factura.estado,
-                "referencia": referencia_pago
+                "pago": {
+                    "referencia_pago": referencia_pago,
+                    "estado_pago": factura.estado,
+                    "fecha_pago": datetime.utcnow().isoformat() if factura.estado == "Pagada" else None
+                },
+                "carrito_vaciado": data["tipo_pago"] == "tarjeta"
             }, 201
             
         except Exception as e:
