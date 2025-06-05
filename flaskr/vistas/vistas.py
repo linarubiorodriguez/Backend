@@ -1178,7 +1178,10 @@ class VistaCarrito(Resource):
             # Buscar carrito del usuario
             carrito = Carrito.query.filter_by(id_usuario=id_usuario).first()
             if not carrito:
-                return {"mensaje": "Carrito no encontrado."}, 404
+                return {
+                    "id_carrito": None,
+                    "productos": []
+                }, 200
 
             # Serializar productos en el carrito con validación de precios
             productos_serializados = []
