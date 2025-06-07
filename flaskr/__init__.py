@@ -126,7 +126,7 @@ def insertar_datos_iniciales():
     ]
     for rol in roles:
         if not Rol.query.get(rol["id"]):
-            db.session.add(Rol(id_Rol=rol["id"], Nombre=rol["nombre"], Descripcion=rol["descripcion"]))
+            db.session.add(Rol(id_rol=rol["id"], Nombre=rol["nombre"], Descripcion=rol["descripcion"]))
 
     categorias = [
         {"id": 1, "nombre": "Camas", "descripcion": "Comodidad para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740162149/camas_w31iw0.png"},

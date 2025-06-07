@@ -40,7 +40,7 @@ class Usuario(db.Model):
     direccion = db.Column(db.String(50))
     contrasena_hash = db.Column(db.String(128))
     estado = db.Column(db.String(50), default="Activo", nullable=False)
-    id_rol = db.Column(db.Integer, db.ForeignKey('rol.id_Rol'), nullable=False)
+    id_rol = db.Column(db.Integer, db.ForeignKey('rol.id_rol'), nullable=False)
 
     tipo_documento = db.relationship('TipoDoc', backref='usuarios')
     rol = db.relationship('Rol', backref='usuarios')

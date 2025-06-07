@@ -250,7 +250,7 @@ tipo_doc_model = config_ns.model('TipoDocumento', {
 })
 
 rol_model = config_ns.model('Rol', {
-    'id_Rol': fields.Integer(readOnly=True),
+    'id_rol': fields.Integer(readOnly=True),
     'Nombre': fields.String(required=True),
     'Descripcion': fields.String()
 })
@@ -1843,7 +1843,7 @@ class VistaPrivRol(Resource):
         except Exception as e:
             return {"mensaje": f"Error al agregar el rol: {str(e)}"}, 500
 
-@config_ns.route('/roles/<int:id_Rol>')
+@config_ns.route('/roles/<int:id_rol>')
 class VistaPrivRoles(Resource):
     @config_ns.expect(rol_model)
     @config_ns.response(200, 'Rol actualizado')
@@ -1852,10 +1852,10 @@ class VistaPrivRoles(Resource):
     @config_ns.response(500, 'Error al actualizar')
     @admin_required
     @jwt_required()
-    def put(self, id_Rol):
+    def put(self, id_rol):
         """Actualizar rol (Requiere admin)"""
         try:
-            rol = Rol.query.filter_by(id_Rol=id_Rol).first()
+            rol = Rol.query.filter_by(id_rol=id_rol).first()
             if not rol:
                 return {"mensaje": "Rol no encontrado."}, 404
 

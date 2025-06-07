@@ -46,9 +46,9 @@ def _insertar_datos_minimos():
 
     # Roles
     roles = [
-        Rol(id_Rol=1, Nombre="Administrador", Descripcion="Admin"),
-        Rol(id_Rol=2, Nombre="Cliente", Descripcion="Cliente"),
-        Rol(id_Rol=3, Nombre="Empleado", Descripcion="Empleado")
+        Rol(id_rol=1, Nombre="Administrador", Descripcion="Admin"),
+        Rol(id_rol=2, Nombre="Cliente", Descripcion="Cliente"),
+        Rol(id_rol=3, Nombre="Empleado", Descripcion="Empleado")
     ]
     
     # Tipos de documento
