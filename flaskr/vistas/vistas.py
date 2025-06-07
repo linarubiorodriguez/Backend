@@ -1402,7 +1402,7 @@ class VistaPrivTipoDoc(Resource):
             tipo_docs = TipoDoc.query.all()
             tipo_docs_serializados = [
                 {
-                    "id_TipoDocumento": tipo_doc.id_TipoDocumento,
+                    "id_tipodocumento": tipo_doc.id_tipodocumento,
                     "Nombre": tipo_doc.Nombre,
                     "Descripcion": tipo_doc.Descripcion
                 }
@@ -1430,7 +1430,7 @@ class VistaPrivTipoDoc(Resource):
             return {
                 "mensaje": "Tipo de documento agregado exitosamente.",
                 "tipo_doc": {
-                    "id_TipoDocumento": nuevo_tipo_doc.id_TipoDocumento,
+                    "id_tipodocumento": nuevo_tipo_doc.id_tipodocumento,
                     "Nombre": nuevo_tipo_doc.Nombre
                 }
             }, 201
@@ -1441,9 +1441,9 @@ class VistaPrivTipoDoc(Resource):
 class VistaPrivTipoDocs(Resource):
     @jwt_required()  # Requiere un JWT válido para acceder
     # Modificar tipo de documento
-    def put(self, id_TipoDocumento):
+    def put(self, id_tipodocumento):
         try:
-            tipo_doc = TipoDoc.query.filter_by(id_TipoDocumento=id_TipoDocumento).first()
+            tipo_doc = TipoDoc.query.filter_by(id_tipodocumento=id_tipodocumento).first()
             if not tipo_doc:
                 return {"mensaje": "Tipo de documento no encontrado."}, 404
 
@@ -1455,7 +1455,7 @@ class VistaPrivTipoDocs(Resource):
             return {
                 "mensaje": "Tipo de documento actualizado exitosamente.",
                 "tipo_doc": {
-                    "id_TipoDocumento": tipo_doc.id_TipoDocumento,
+                    "id_tipodocumento": tipo_doc.id_tipodocumento,
                     "Nombre": tipo_doc.Nombre,
                     "Descripcion": tipo_doc.Descripcion
                 }

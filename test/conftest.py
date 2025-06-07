@@ -53,8 +53,8 @@ def _insertar_datos_minimos():
     
     # Tipos de documento
     tipos_doc = [
-        TipoDoc(id_TipoDocumento=1, Nombre="CC", Descripcion="Cédula"),
-        TipoDoc(id_TipoDocumento=2, Nombre="TI", Descripcion="Tarjeta")
+        TipoDoc(id_tipodocumento=1, Nombre="CC", Descripcion="Cédula"),
+        TipoDoc(id_tipodocumento=2, Nombre="TI", Descripcion="Tarjeta")
     ]
     
     # Proveedor

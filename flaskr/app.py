@@ -66,7 +66,7 @@ api.add_resource(VistaSignIn, '/signin')
 
 # Rutas para TipoDoc
 api.add_resource(VistaPrivTipoDoc, '/tipo_doc') 
-api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_TipoDocumento>')  
+api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_tipodocumento>')  
 
 
 

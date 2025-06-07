@@ -9,13 +9,13 @@ db = SQLAlchemy()
 
 class TipoDoc(db.Model):
     __tablename__ = 'tipo_doc'
-    id_TipoDocumento = db.Column(db.Integer, primary_key=True)
+    id_tipodocumento = db.Column(db.Integer, primary_key=True)
     Nombre = db.Column(db.String(50), nullable=False)
     Descripcion = db.Column(db.String(255))
 
 class Rol(db.Model):
     __tablename__ = 'rol'
-    id_Rol = db.Column(db.Integer, primary_key=True)
+    id_rol = db.Column(db.Integer, primary_key=True)
     Nombre = db.Column(db.String(50), nullable=False)
     Descripcion = db.Column(db.String(255))
 
@@ -36,7 +36,7 @@ class Usuario(db.Model):
     telefono = db.Column(db.String(50))
     email = db.Column(db.String(50), unique=True, nullable=False)
     num_documento = db.Column(db.String(50), unique=True, nullable=False)
-    tipo_doc = db.Column(db.Integer, db.ForeignKey('tipo_doc.id_TipoDocumento'), nullable=False)
+    tipo_doc = db.Column(db.Integer, db.ForeignKey('tipo_doc.id_tipodocumento'), nullable=False)
     direccion = db.Column(db.String(50))
     contrasena_hash = db.Column(db.String(128))
     estado = db.Column(db.String(50), default="Activo", nullable=False)

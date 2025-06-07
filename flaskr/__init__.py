@@ -116,7 +116,7 @@ def insertar_datos_iniciales():
     ]
     for tipo in tipos_documento:
         if not TipoDoc.query.get(tipo["id"]):
-            db.session.add(TipoDoc(id_TipoDocumento=tipo["id"], Nombre=tipo["nombre"], Descripcion=tipo["descripcion"]))
+            db.session.add(TipoDoc(id_tipodocumento=tipo["id"], Nombre=tipo["nombre"], Descripcion=tipo["descripcion"]))
 
     # Roles
     roles = [

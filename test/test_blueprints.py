@@ -27,7 +27,7 @@ def create_test_blueprints():
     users_bp = Blueprint('test_users', __name__)
     users_api = Api(users_bp, prefix='/test/users')
     users_api.add_resource(VistaPrivTipoDoc, '/tipo_doc')
-    users_api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_TipoDocumento>')
+    users_api.add_resource(VistaPrivTipoDocs, '/tipo_doc/<int:id_tipodocumento>')
     users_api.add_resource(VistaPrivClientes, '/clientes')
     users_api.add_resource(VistaPrivCliente, '/clientes/<int:id_usuario>')
     users_api.add_resource(VistaAdminEmpleados, '/empleados')
