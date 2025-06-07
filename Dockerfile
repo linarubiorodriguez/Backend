@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 5000
 
 # Comando para correr la aplicación
-CMD ["python", "flaskr/app.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "flaskr.app:app"]
