@@ -116,7 +116,7 @@ def insertar_datos_iniciales():
     ]
     for tipo in tipos_documento:
         if not TipoDoc.query.get(tipo["id"]):
-            db.session.add(TipoDoc(id_tipodocumento=tipo["id"], Nombre=tipo["nombre"], Descripcion=tipo["descripcion"]))
+            db.session.add(TipoDoc(id_tipodocumento=tipo["id"], nombre=tipo["nombre"], descripcion=tipo["descripcion"]))
 
     # Roles
     roles = [
@@ -126,7 +126,7 @@ def insertar_datos_iniciales():
     ]
     for rol in roles:
         if not Rol.query.get(rol["id"]):
-            db.session.add(Rol(id_rol=rol["id"], Nombre=rol["nombre"], Descripcion=rol["descripcion"]))
+            db.session.add(Rol(id_rol=rol["id"], nombre=rol["nombre"], descripcion=rol["descripcion"]))
 
     categorias = [
         {"id": 1, "nombre": "Camas", "descripcion": "Comodidad para tus mascotas.", "imagen": "https://res.cloudinary.com/dvzzqjlbj/image/upload/v1740162149/camas_w31iw0.png"},

@@ -1403,8 +1403,8 @@ class VistaPrivTipoDoc(Resource):
             tipo_docs_serializados = [
                 {
                     "id_tipodocumento": tipo_doc.id_tipodocumento,
-                    "Nombre": tipo_doc.Nombre,
-                    "Descripcion": tipo_doc.Descripcion
+                    "nombre": tipo_doc.nombre,
+                    "descripcion": tipo_doc.descripcion
                 }
                 for tipo_doc in tipo_docs
             ]
@@ -1416,12 +1416,12 @@ class VistaPrivTipoDoc(Resource):
     # Agregar un nuevo tipo de documento
     def post(self):
         try:
-            if not request.json.get("Nombre"):
+            if not request.json.get("nombre"):
                 return {"mensaje": "Faltan datos obligatorios."}, 400
 
             nuevo_tipo_doc = TipoDoc(
-                Nombre=request.json["Nombre"],
-                Descripcion=request.json.get("Descripcion")
+                nombre=request.json["nombre"],
+                descripcion=request.json.get("descripcion")
             )
 
             db.session.add(nuevo_tipo_doc)
@@ -1431,7 +1431,7 @@ class VistaPrivTipoDoc(Resource):
                 "mensaje": "Tipo de documento agregado exitosamente.",
                 "tipo_doc": {
                     "id_tipodocumento": nuevo_tipo_doc.id_tipodocumento,
-                    "Nombre": nuevo_tipo_doc.Nombre
+                    "nombre": nuevo_tipo_doc.nombre
                 }
             }, 201
         except Exception as e:
@@ -1447,8 +1447,8 @@ class VistaPrivTipoDocs(Resource):
             if not tipo_doc:
                 return {"mensaje": "Tipo de documento no encontrado."}, 404
 
-            tipo_doc.Nombre = request.json.get("Nombre", tipo_doc.Nombre)
-            tipo_doc.Descripcion = request.json.get("Descripcion", tipo_doc.Descripcion)
+            tipo_doc.nombre = request.json.get("nombre", tipo_doc.nombre)
+            tipo_doc.descripcion = request.json.get("descripcion", tipo_doc.descripcion)
 
             db.session.commit()
 
@@ -1456,8 +1456,8 @@ class VistaPrivTipoDocs(Resource):
                 "mensaje": "Tipo de documento actualizado exitosamente.",
                 "tipo_doc": {
                     "id_tipodocumento": tipo_doc.id_tipodocumento,
-                    "Nombre": tipo_doc.Nombre,
-                    "Descripcion": tipo_doc.Descripcion
+                    "nombre": tipo_doc.nombre,
+                    "descripcion": tipo_doc.descripcion
                 }
             }, 200
         except Exception as e:

@@ -10,14 +10,14 @@ db = SQLAlchemy()
 class TipoDoc(db.Model):
     __tablename__ = 'tipo_doc'
     id_tipodocumento = db.Column(db.Integer, primary_key=True)
-    Nombre = db.Column(db.String(50), nullable=False)
-    Descripcion = db.Column(db.String(255))
+    nombre = db.Column(db.String(50), nullable=False)
+    descripcion = db.Column(db.String(255))
 
 class Rol(db.Model):
     __tablename__ = 'rol'
     id_rol = db.Column(db.Integer, primary_key=True)
-    Nombre = db.Column(db.String(50), nullable=False)
-    Descripcion = db.Column(db.String(255))
+    nombre = db.Column(db.String(50), nullable=False)
+    descripcion = db.Column(db.String(255))
 
 
 class Categoria(db.Model):

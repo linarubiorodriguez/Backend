@@ -46,15 +46,15 @@ def _insertar_datos_minimos():
 
     # Roles
     roles = [
-        Rol(id_rol=1, Nombre="Administrador", Descripcion="Admin"),
-        Rol(id_rol=2, Nombre="Cliente", Descripcion="Cliente"),
-        Rol(id_rol=3, Nombre="Empleado", Descripcion="Empleado")
+        Rol(id_rol=1, nombre="Administrador", descripcion="Admin"),
+        Rol(id_rol=2, nombre="Cliente", descripcion="Cliente"),
+        Rol(id_rol=3, nombre="Empleado", descripcion="Empleado")
     ]
     
     # Tipos de documento
     tipos_doc = [
-        TipoDoc(id_tipodocumento=1, Nombre="CC", Descripcion="Cédula"),
-        TipoDoc(id_tipodocumento=2, Nombre="TI", Descripcion="Tarjeta")
+        TipoDoc(id_tipodocumento=1, nombre="CC", descripcion="Cédula"),
+        TipoDoc(id_tipodocumento=2, nombre="TI", descripcion="Tarjeta")
     ]
     
     # Proveedor

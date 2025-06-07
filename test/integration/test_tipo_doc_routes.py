@@ -3,8 +3,8 @@ from flask import json
 
 def test_create_tipo_doc(client, admin_headers):
     response = client.post('/test/users/tipo_doc', json={
-        'Nombre': 'TI',
-        'Descripcion': 'Tarjeta de Identidad'
+        'nombre': 'TI',
+        'descripcion': 'Tarjeta de Identidad'
     }, headers=admin_headers)
     print(response.json)  # Para ver la estructura real
     assert response.status_code == 201
